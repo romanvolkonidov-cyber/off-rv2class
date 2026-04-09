@@ -1,0 +1,10 @@
+node_modules/
+.env
+.DS_Store
+server/dev.db
+server/dev.db-journal
+client/.next/
+client/out/
+server/dist/
+server/uploads/*
+!server/uploads/.gitkeep

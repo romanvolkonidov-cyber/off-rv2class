@@ -1,0 +1,238 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum ExerciseType {
+  VOCABULARY
+  LISTENING
+  SPEAKING
+  READING
+  WRITING
+  GRAMMAR
+  FILL_IN_BLANK
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+}
+
+enum SubscriptionPlan {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+// ==========================================
+// USER & AUTH
+// ==========================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Teacher -> Student relationship
+  students  User[]   @relation("TeacherStudents")
+  teacher   User?    @relation("TeacherStudents", fields: [teacherId], references: [id])
+  teacherId String?
+
+  // Teacher's subscription
+  subscription Subscription?
+
+  // Teacher's class sessions
+  classSessions ClassSession[]
+
+  // Student's homework assignments
+  homeworkAssignments HomeworkAssignment[] @relation("StudentAssignments")
+
+  // Teacher's assigned homework
+  assignedHomework HomeworkAssignment[] @relation("TeacherAssignments")
+
+  @@index([role])
+  @@index([teacherId])
+}
+
+model Subscription {
+  id        String             @id @default(uuid())
+  userId    String             @unique
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      SubscriptionPlan
+  status    SubscriptionStatus @default(ACTIVE)
+  expiresAt DateTime
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+// ==========================================
+// CONTENT: COURSES, LESSONS, SLIDES
+// ==========================================
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lessons Lesson[]
+}
+
+model Lesson {
+  id        String  @id @default(uuid())
+  title     String
+  courseId   String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  published Boolean @default(false)
+  orderIndex Int    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // AI processing status
+  aiStatus  String  @default("pending") // pending, processing, completed, failed
+
+  slides         Slide[]
+  homework       Homework[]
+  classSessions  ClassSession[]
+  homeworkAssignments HomeworkAssignment[]
+
+  @@index([courseId])
+}
+
+model Slide {
+  id          String @id @default(uuid())
+  lessonId    String
+  lesson      Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  orderIndex  Int
+  imageUrl    String  // compressed JPEG path
+  originalUrl String  // original PNG path
+  audioUrl    String? // path to associated audio file
+  videoUrl    String? // path to associated video file
+  audioWidgetX Float? // position X (percent)
+  audioWidgetY Float? // position Y (percent)
+  audioWidgetScale Float @default(1.0)
+  createdAt   DateTime @default(now())
+
+  teacherNote TeacherNote?
+
+  @@index([lessonId])
+  @@unique([lessonId, orderIndex])
+}
+
+// ==========================================
+// AI-GENERATED INTELLIGENCE
+// ==========================================
+
+model TeacherNote {
+  id                 String @id @default(uuid())
+  slideId            String @unique
+  slide              Slide  @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  suggestedQuestions String // JSON array of questions to ask
+  correctAnswers     String // JSON array of answers for slide exercises
+  tips               String? // Additional teaching tips
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Homework {
+  id            String       @id @default(uuid())
+  lessonId      String
+  lesson        Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  questionText  String
+  exerciseType  ExerciseType
+  options       String?      // JSON array for multiple choice options
+  correctAnswer String?      // The definitive correct answer (nullable for writing/speaking)
+  needsHumanGrading Boolean  @default(false)
+  audioUrl      String?      // Optional audio associated with the exercise
+  orderIndex    Int
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  responses HomeworkResponse[]
+
+  @@index([lessonId])
+}
+
+// ==========================================
+// HOMEWORK ASSIGNMENTS & GRADING
+// ==========================================
+
+model HomeworkAssignment {
+  id             String   @id @default(uuid())
+  lessonId       String
+  lesson         Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        User     @relation("StudentAssignments", fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId      String
+  teacher        User     @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
+  assignedAt     DateTime @default(now())
+  submittedAt    DateTime?
+  score          Float?
+  gradeOverride  Float?
+  teacherComment String?
+
+  responses HomeworkResponse[]
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@unique([lessonId, studentId]) // One assignment per lesson per student
+}
+
+model HomeworkResponse {
+  id            String             @id @default(uuid())
+  assignmentId  String
+  assignment    HomeworkAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  homeworkId    String
+  homework      Homework           @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  studentAnswer String
+  isCorrect     Boolean
+  createdAt     DateTime           @default(now())
+
+  @@index([assignmentId])
+}
+
+// ==========================================
+// LIVE CLASSROOM
+// ==========================================
+
+model ClassSession {
+  id           String   @id @default(uuid())
+  lessonId     String
+  lesson       Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  teacherId    String
+  teacher      User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  currentSlide Int      @default(0)
+  isActive     Boolean  @default(true)
+  studentCanAnnotate Boolean @default(false)
+  canvasStates String?  // JSON: { slideIndex: fabricCanvasJSON }
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+
+  @@index([teacherId])
+  @@index([isActive])
+}
