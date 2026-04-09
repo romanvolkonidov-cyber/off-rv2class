@@ -28,8 +28,14 @@ const io = new SocketIOServer(httpServer, {
 });
 
 // Middleware
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:3000',
+  'https://rv2class.vercel.app', 
+  /\.vercel\.app$/ 
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));

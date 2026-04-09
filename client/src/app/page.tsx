@@ -75,7 +75,7 @@ export default function LoginPage() {
       } else if (err.response?.data?.error) {
         toast.error(err.response.data.error);
       } else {
-        toast.error('Ошибка входа через Firebase');
+        toast.error(`Ошибка: ${err.message || 'Firebase Login Error'}`);
       }
     }
   };
