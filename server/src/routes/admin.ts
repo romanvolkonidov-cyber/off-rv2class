@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/roles.js';
-import { processSlideImages } from '../services/imageProcessor.js';
+import { processSlideImages, createCollage } from '../services/imageProcessor.js';
 import { generateLessonContent } from '../services/ai.js';
 
 export const adminRouter = Router();
@@ -74,7 +74,12 @@ const videoUpload = multer({
 adminRouter.get('/courses', async (_req, res: Response): Promise<void> => {
   try {
     const courses = await prisma.course.findMany({
-      include: { lessons: { select: { id: true, title: true, published: true, aiStatus: true } } },
+      include: { 
+        lessons: { 
+          select: { id: true, title: true, published: true, aiStatus: true, orderIndex: true },
+          orderBy: { orderIndex: 'asc' }
+        } 
+      },
       orderBy: { orderIndex: 'asc' },
     });
     res.json(courses);
@@ -222,6 +227,9 @@ adminRouter.post(
 
       // Process images: resize + compress
       const processedSlides = await processSlideImages(lessonId, files);
+      
+      // Create economical collage
+      const collagePath = await createCollage(lessonId, processedSlides.map(s => s.compressedPath));
 
       // Save slides to DB
       const slideRecords = await Promise.all(
@@ -238,7 +246,7 @@ adminRouter.post(
       );
 
       // Trigger AI content generation (async — don't block the response)
-      generateLessonContent(lessonId, processedSlides.map(s => s.compressedPath))
+      generateLessonContent(lessonId, collagePath, processedSlides.length)
         .then(async (content) => {
           // Save teacher notes
           for (const note of content.teacher_notes) {

@@ -22,7 +22,9 @@ interface Course {
     title: string;
     published: boolean;
     aiStatus: string;
+    orderIndex: number;
   }[];
+  orderIndex: number;
 }
 
 export default function AdminDashboard() {
@@ -34,6 +36,8 @@ export default function AdminDashboard() {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [uploadingLessonId, setUploadingLessonId] = useState<string | null>(null);
   const [isCreatingCourse, setIsCreatingCourse] = useState(false);
+  const [newCourseOrder, setNewCourseOrder] = useState(0);
+  const [newLessonOrder, setNewLessonOrder] = useState(0);
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -54,9 +58,11 @@ export default function AdminDashboard() {
       await api.post('/admin/courses', {
         title: newCourseTitle,
         description: newCourseDesc || null,
+        orderIndex: Number(newCourseOrder),
       });
       setNewCourseTitle('');
       setNewCourseDesc('');
+      setNewCourseOrder(0);
       setIsCreatingCourse(false);
       fetchCourses();
       toast.success('Курс создан');
@@ -70,8 +76,10 @@ export default function AdminDashboard() {
     try {
       await api.post(`/admin/courses/${courseId}/lessons`, {
         title: newLessonTitle,
+        orderIndex: Number(newLessonOrder),
       });
       setNewLessonTitle('');
+      setNewLessonOrder(0);
       setSelectedCourseId(null);
       fetchCourses();
       toast.success('Урок создан');
@@ -173,6 +181,14 @@ export default function AdminDashboard() {
                   id="course-desc-input"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Порядок (например: 1, 2, 3...)</Label>
+                <Input
+                  type="number"
+                  value={newCourseOrder}
+                  onChange={(e) => setNewCourseOrder(Number(e.target.value))}
+                />
+              </div>
               <Button onClick={handleCreateCourse} className="w-full cursor-pointer" id="submit-course-btn">
                 {t('common.create')}
               </Button>
@@ -226,6 +242,15 @@ export default function AdminDashboard() {
                             value={newLessonTitle}
                             onChange={(e) => setNewLessonTitle(e.target.value)}
                             placeholder="Present Simple — Введение"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Порядок (например: 001, 002...)</Label>
+                          <Input
+                            type="number"
+                            value={newLessonOrder}
+                            onChange={(e) => setNewLessonOrder(Number(e.target.value))}
+                            placeholder="1"
                           />
                         </div>
                         <Button

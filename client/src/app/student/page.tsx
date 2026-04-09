@@ -28,9 +28,16 @@ interface ActiveSession {
   lesson: { title: string };
 }
 
+interface PastSession {
+  id: string;
+  lesson: { id: string; title: string };
+  teacher: { name: string };
+}
+
 interface DashboardData {
   assignments: Assignment[];
   activeSession: ActiveSession | null;
+  pastSessions: PastSession[];
 }
 
 export default function StudentDashboard() {
@@ -182,6 +189,42 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Past Class Sessions (Archive) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            🗂 Пройденные уроки (Архив)
+          </CardTitle>
+        </CardHeader>
+        <Separator />
+        <CardContent className="pt-3">
+          {!data.pastSessions || data.pastSessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Вы еще не посетили ни одного живого урока
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {data.pastSessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between"
+                  onClick={() => router.push(`/student/review/${session.id}`)}
+                >
+                  <div>
+                    <Badge variant="outline" className="mb-2 bg-primary/5">Урок завершен</Badge>
+                    <p className="font-semibold">{session.lesson.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Преподаватель: {session.teacher.name}</p>
+                  </div>
+                  <Button variant="secondary" size="sm" className="mt-3 w-full cursor-pointer">
+                    Открыть материалы
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

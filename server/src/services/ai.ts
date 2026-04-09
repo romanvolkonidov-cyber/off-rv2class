@@ -57,33 +57,21 @@ Make sure the homework exercises directly test the material shown in the slides,
  */
 export async function generateLessonContent(
   lessonId: string,
-  slidePaths: string[]
+  collagePath: string,
+  slideCount: number
 ): Promise<AIGeneratedContent> {
   // If no API key, return stub data for development
   if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
     console.log(`⚠️ No Anthropic API key configured. Generating stub content for lesson ${lessonId}`);
-    return generateStubContent(slidePaths.length);
+    return generateStubContent(slideCount);
   }
 
-  // Read all slide images as base64
-  const imageContents: Anthropic.ImageBlockParam[] = [];
+  // Read collage image as base64
+  const absolutePath = path.join(process.cwd(), collagePath);
+  const buffer = await fs.readFile(absolutePath);
+  const base64 = buffer.toString('base64');
 
-  for (const slidePath of slidePaths) {
-    const absolutePath = path.join(process.cwd(), slidePath);
-    const buffer = await fs.readFile(absolutePath);
-    const base64 = buffer.toString('base64');
-
-    imageContents.push({
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: 'image/jpeg',
-        data: base64,
-      },
-    });
-  }
-
-  console.log(`🤖 Sending ${slidePaths.length} slides to Claude for lesson ${lessonId}...`);
+  console.log(`🤖 Sending collage for lesson ${lessonId} to Claude...`);
 
   const response = await anthropic.messages.create({
     model: 'claude-3-5-haiku-20241022',
@@ -92,8 +80,15 @@ export async function generateLessonContent(
       {
         role: 'user',
         content: [
-          { type: 'text', text: SYSTEM_PROMPT },
-          ...imageContents,
+          { type: 'text', text: SYSTEM_PROMPT + `\n\nThere are ${slideCount} slides in this collage. Each is numbered from 1 to ${slideCount}.` },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: base64,
+            },
+          },
         ],
       },
     ],

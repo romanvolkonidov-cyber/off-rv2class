@@ -440,9 +440,8 @@ function ClassroomContent() {
     if (!sessionId) return;
     try {
       await api.put(`/teacher/classroom/${sessionId}/end`);
-      disconnectSocket();
-      router.push('/teacher');
-      toast.success('Урок завершён');
+      toast.success('Урок завершен');
+      router.push(`/teacher?assignHw=${sessionId}`);
     } catch {
       toast.error('Ошибка завершения урока');
     }
@@ -546,6 +545,7 @@ function ClassroomContent() {
               🗑️ {t('classroom.clear')}
             </Button>
           </div>
+        )}
 
           {/* Slide + Canvas + Video wrapper */}
           <div className="flex-1 relative bg-muted/30 flex items-center justify-center p-4 gap-4">

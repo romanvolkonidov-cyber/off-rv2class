@@ -248,11 +248,33 @@ teacherRouter.put('/classroom/:sessionId/end', async (req: AuthRequest, res: Res
     const session = await prisma.classSession.update({
       where: { id: req.params.sessionId },
       data: { isActive: false, endedAt: new Date() },
+      include: {
+        students: { select: { id: true, name: true, email: true } },
+        lesson: { select: { id: true, title: true } }
+      }
     });
     res.json(session);
   } catch (error) {
     console.error('End classroom error:', error);
     res.status(500).json({ error: 'Ошибка завершения урока' });
+  }
+});
+
+// GET /api/teacher/history - Get past sessions
+teacherRouter.get('/history', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const history = await prisma.classSession.findMany({
+      where: { teacherId: req.user!.userId, isActive: false },
+      include: {
+        lesson: { select: { id: true, title: true } },
+        students: { select: { id: true, name: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(history);
+  } catch (error) {
+    console.error('Get history error:', error);
+    res.status(500).json({ error: 'Ошибка загрузки архива уроков' });
   }
 });
 

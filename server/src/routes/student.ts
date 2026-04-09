@@ -44,9 +44,23 @@ studentRouter.get('/dashboard', async (req: AuthRequest, res: Response): Promise
       });
     }
 
+    // Get past attended sessions
+    const pastSessions = await prisma.classSession.findMany({
+      where: { 
+        students: { some: { id: studentId } },
+        isActive: false
+      },
+      include: {
+        lesson: { select: { id: true, title: true } },
+        teacher: { select: { name: true } }
+      },
+      orderBy: { endedAt: 'desc' }
+    });
+
     res.json({
       assignments,
       activeSession,
+      pastSessions
     });
   } catch (error) {
     console.error('Student dashboard error:', error);
@@ -96,7 +110,11 @@ studentRouter.get('/lessons/:lessonId', async (req: AuthRequest, res: Response):
       where: { studentId, lessonId: req.params.lessonId },
     });
 
-    if (!hasAccess) {
+    const attended = await prisma.classSession.findFirst({
+      where: { lessonId: req.params.lessonId, students: { some: { id: studentId } } }
+    });
+
+    if (!hasAccess && !attended) {
       res.status(403).json({ error: 'У вас нет доступа к этому уроку' });
       return;
     }
@@ -120,6 +138,40 @@ studentRouter.get('/lessons/:lessonId', async (req: AuthRequest, res: Response):
   } catch (error) {
     console.error('Get lesson slides error:', error);
     res.status(500).json({ error: 'Ошибка получения слайдов урока' });
+  }
+});
+
+// GET /api/student/sessions/:sessionId - Get past session for review
+studentRouter.get('/sessions/:sessionId', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const studentId = req.user!.userId;
+    
+    // Check if student attended
+    const attended = await prisma.classSession.findFirst({
+      where: { 
+        id: req.params.sessionId, 
+        students: { some: { id: studentId } } 
+      },
+      include: {
+        lesson: {
+          include: {
+            slides: {
+              orderBy: { orderIndex: 'asc' }
+            }
+          }
+        }
+      }
+    });
+
+    if (!attended) {
+      res.status(403).json({ error: 'У вас нет доступа к этому уроку' });
+      return;
+    }
+
+    res.json(attended);
+  } catch (error) {
+    console.error('Get past session error:', error);
+    res.status(500).json({ error: 'Ошибка загрузки архивного урока' });
   }
 });
 

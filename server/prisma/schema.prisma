@@ -67,6 +67,9 @@ model User {
   // Teacher's class sessions
   classSessions ClassSession[]
 
+  // Student's attended class sessions
+  attendedSessions ClassSession[] @relation("SessionAttendees")
+
   // Student's homework assignments
   homeworkAssignments HomeworkAssignment[] @relation("StudentAssignments")
 
@@ -232,6 +235,9 @@ model ClassSession {
   canvasStates String?  // JSON: { slideIndex: fabricCanvasJSON }
   startedAt    DateTime @default(now())
   endedAt      DateTime?
+
+  // Attendees
+  students     User[]   @relation("SessionAttendees")
 
   @@index([teacherId])
   @@index([isActive])

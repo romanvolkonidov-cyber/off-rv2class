@@ -25,46 +25,6 @@ ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
   set -e
   
   export REMOTE_DIR="/home/trader/rv2class-api"
-  export PORT=4000
-  
-  echo "🛡 Configuring Firewall (UFW)..."
-  sudo ufw allow OpenSSH || true
-  sudo ufw allow 80/tcp || true
-  sudo ufw allow 443/tcp || true
-  sudo ufw --force enable
-
-  echo "🌐 Configuring NGINX..."
-  if ! command -v nginx &> /dev/null
-  then
-      echo "Installing Nginx..."
-      sudo apt-get update && sudo apt-get install -y nginx
-  fi
-
-  # Create NGINX conf
-  sudo bash -c "cat > /etc/nginx/sites-available/rv2class.conf" << NGINX_CONF
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:$PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \\\$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \\\$host;
-        proxy_cache_bypass \\\$http_upgrade;
-        
-        # Socket.io specific headers
-        proxy_set_header X-Real-IP \\\$remote_addr;
-        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \\\$scheme;
-    }
-}
-NGINX_CONF
-
-  sudo ln -sf /etc/nginx/sites-available/rv2class.conf /etc/nginx/sites-enabled/
-  sudo rm -f /etc/nginx/sites-enabled/default
-  sudo nginx -t && sudo systemctl restart nginx
   
   cd $REMOTE_DIR
   

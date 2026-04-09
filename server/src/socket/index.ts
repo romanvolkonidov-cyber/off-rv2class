@@ -52,9 +52,14 @@ export function setupSocket(io: SocketIOServer): void {
       await socket.join(`classroom:${data.sessionId}`);
       console.log(`🎒 Student joined room: classroom:${data.sessionId}`);
 
-      // Get current state and send to the joining student
-      const session = await prisma.classSession.findUnique({
+      // Get current state, connect student, and send to the joining student
+      const session = await prisma.classSession.update({
         where: { id: data.sessionId },
+        data: {
+          students: {
+            connect: { id: socket.user?.userId }
+          }
+        }
       });
 
       if (session) {
