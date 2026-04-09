@@ -79,11 +79,11 @@ export default function StudentsPage() {
           </p>
         </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
-          <DialogTrigger asChild>
+          <DialogTrigger render={
             <Button className="gradient-brand text-white cursor-pointer">
               + {t('teacher.addStudent')}
             </Button>
-          </DialogTrigger>
+          } />
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t('teacher.addStudent')}</DialogTitle>

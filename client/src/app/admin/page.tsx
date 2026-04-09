@@ -153,11 +153,11 @@ export default function AdminDashboard() {
         </div>
 
         <Dialog open={isCreatingCourse} onOpenChange={setIsCreatingCourse}>
-          <DialogTrigger asChild>
+          <DialogTrigger render={
             <Button className="gradient-brand text-white shadow-md shadow-primary/20 cursor-pointer" id="create-course-btn">
               + {t('admin.createCourse')}
             </Button>
-          </DialogTrigger>
+          } />
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t('admin.createCourse')}</DialogTitle>
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex gap-2">
                   <Dialog>
-                    <DialogTrigger asChild>
+                    <DialogTrigger render={
                       <Button
                         variant="outline"
                         size="sm"
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
                       >
                         + {t('admin.createLesson')}
                       </Button>
-                    </DialogTrigger>
+                    } />
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>{t('admin.createLesson')}</DialogTitle>
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
                               }}
                               disabled={uploadingLessonId === lesson.id}
                             />
-                            <Button variant="outline" size="sm" asChild disabled={uploadingLessonId === lesson.id}>
+                            <Button variant="outline" size="sm" disabled={uploadingLessonId === lesson.id}>
                               <span>
                                 {uploadingLessonId === lesson.id ? '⏳ Загрузка...' : `📤 ${t('admin.uploadSlides')}`}
                               </span>

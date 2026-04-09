@@ -147,7 +147,7 @@ export default function AdminLessonDetailsPage() {
                             if (e.target.files?.[0]) handleSlideAudioUpload(slide.id, e.target.files[0]);
                           }}
                         />
-                        <Button variant="outline" size="sm" asChild disabled={uploadingSlideId === slide.id}>
+                        <Button variant="outline" size="sm" disabled={uploadingSlideId === slide.id}>
                           <span>{uploadingSlideId === slide.id ? 'Загрузка...' : 'Загрузить .MP3'}</span>
                         </Button>
                       </label>
@@ -167,7 +167,7 @@ export default function AdminLessonDetailsPage() {
                             if (e.target.files?.[0]) handleSlideVideoUpload(slide.id, e.target.files[0]);
                           }}
                         />
-                        <Button variant="outline" size="sm" asChild disabled={uploadingSlideId === slide.id}>
+                        <Button variant="outline" size="sm" disabled={uploadingSlideId === slide.id}>
                           <span>{uploadingSlideId === slide.id ? 'Загрузка...' : 'Загрузить Видео'}</span>
                         </Button>
                       </label>
@@ -263,7 +263,7 @@ export default function AdminLessonDetailsPage() {
                       if (e.target.files?.[0]) handleHomeworkAudioUpload(hw.id, e.target.files[0]);
                     }}
                   />
-                  <Button variant="outline" size="sm" asChild disabled={uploadingHomeworkId === hw.id}>
+                  <Button variant="outline" size="sm" disabled={uploadingHomeworkId === hw.id}>
                     <span>{uploadingHomeworkId === hw.id ? 'Загрузка...' : 'Загрузить Аудио для ДЗ'}</span>
                   </Button>
                 </label>
