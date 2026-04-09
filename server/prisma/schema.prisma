@@ -118,6 +118,7 @@ model Lesson {
 
   // AI processing status
   aiStatus  String  @default("pending") // pending, processing, completed, failed
+  listeningScript String?
 
   slides         Slide[]
   homework       Homework[]

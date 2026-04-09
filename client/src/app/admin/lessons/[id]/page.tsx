@@ -7,6 +7,11 @@ import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
 export default function AdminLessonDetailsPage() {
@@ -16,6 +21,20 @@ export default function AdminLessonDetailsPage() {
   const [lesson, setLesson] = useState<any>(null);
   const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(null);
   const [uploadingHomeworkId, setUploadingHomeworkId] = useState<string | null>(null);
+
+  // Edit states
+  const [editingNote, setEditingNote] = useState<any>(null);
+  const [noteQuestions, setNoteQuestions] = useState('');
+  const [noteAnswers, setNoteAnswers] = useState('');
+  const [noteTips, setNoteTips] = useState('');
+
+  const [editingHomework, setEditingHomework] = useState<any>(null);
+  const [hwQuestionText, setHwQuestionText] = useState('');
+  const [hwOptions, setHwOptions] = useState('');
+  const [hwCorrectAnswer, setHwCorrectAnswer] = useState('');
+
+  const [isEditingScript, setIsEditingScript] = useState(false);
+  const [tempScript, setTempScript] = useState('');
   
   // Widget dragging state
   const slideRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -97,6 +116,51 @@ export default function AdminLessonDetailsPage() {
     handleSaveWidgetCoords(slideId, Math.max(0, Math.min(100, percentX)), Math.max(0, Math.min(100, percentY)));
   };
 
+  const handleUpdateNote = async () => {
+    if (!editingNote) return;
+    try {
+      await api.put(`/admin/teacher-notes/${editingNote.id}`, {
+        suggestedQuestions: noteQuestions,
+        correctAnswers: noteAnswers,
+        tips: noteTips,
+      });
+      toast.success('Заметки обновлены');
+      setEditingNote(null);
+      fetchLesson();
+    } catch {
+      toast.error('Ошибка обновления');
+    }
+  };
+
+  const handleUpdateHomework = async () => {
+    if (!editingHomework) return;
+    try {
+      await api.put(`/admin/homework/${editingHomework.id}`, {
+        questionText: hwQuestionText,
+        options: hwOptions || null,
+        correctAnswer: hwCorrectAnswer || null,
+      });
+      toast.success('Задание обновлено');
+      setEditingHomework(null);
+      fetchLesson();
+    } catch {
+      toast.error('Ошибка обновления');
+    }
+  };
+
+  const handleUpdateScript = async () => {
+    try {
+      await api.put(`/admin/lessons/${params.id}/script`, {
+        listeningScript: tempScript,
+      });
+      toast.success('Сценарий обновлен');
+      setIsEditingScript(false);
+      fetchLesson();
+    } catch {
+      toast.error('Ошибка обновления сценария');
+    }
+  };
+
   if (!lesson) return <div className="p-8">Загрузка...</div>;
 
   return (
@@ -110,6 +174,39 @@ export default function AdminLessonDetailsPage() {
           <p className="text-muted-foreground text-sm">Редактор медиафайлов и ДЗ</p>
         </div>
       </div>
+
+      {/* Listening Script Section */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            🎙️ Сценарий для Аудио (ИИ)
+          </CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              setTempScript(lesson.listeningScript || '');
+              setIsEditingScript(true);
+            }}
+          >
+            Редактировать
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {lesson.listeningScript ? (
+            <div className="text-sm font-mono whitespace-pre-wrap bg-background/50 p-4 rounded-lg border">
+              {lesson.listeningScript}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground py-4 text-center border-dashed border-2 rounded-lg">
+              Сценарий пока не сгенерирован. Загрузите слайды, чтобы ИИ подготовил текст для озвучки.
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-tight">
+            Используйте данный текст для записи аудио к заданию типа LISTENING.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -178,8 +275,23 @@ export default function AdminLessonDetailsPage() {
                   {/* Teacher Notes (AI Generated) */}
                   {slide.teacherNote && (
                     <div className="p-3 bg-muted/30 rounded-lg border border-border space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase">
-                        🤖 ИИ Заметки для учителя
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase">
+                          🤖 ИИ Заметки для учителя
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="xs" 
+                          className="h-6 px-2 text-xs"
+                          onClick={() => {
+                            setEditingNote(slide.teacherNote);
+                            setNoteQuestions(slide.teacherNote.suggestedQuestions);
+                            setNoteAnswers(slide.teacherNote.correctAnswers);
+                            setNoteTips(slide.teacherNote.tips || '');
+                          }}
+                        >
+                          Редактировать
+                        </Button>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -230,9 +342,23 @@ export default function AdminLessonDetailsPage() {
         <CardContent className="space-y-6">
           {lesson.homework?.map((hw: any) => (
             <div key={hw.id} className="p-4 border rounded-lg bg-card space-y-3">
-              <div className="flex gap-2">
-                <Badge>{hw.exerciseType}</Badge>
-                {hw.needsHumanGrading && <Badge variant="secondary">Ручная проверка</Badge>}
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Badge>{hw.exerciseType}</Badge>
+                  {hw.needsHumanGrading && <Badge variant="secondary">Ручная проверка</Badge>}
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="xs" 
+                  onClick={() => {
+                    setEditingHomework(hw);
+                    setHwQuestionText(hw.questionText);
+                    setHwOptions(hw.options || '');
+                    setHwCorrectAnswer(hw.correctAnswer || '');
+                  }}
+                >
+                  Редактировать
+                </Button>
               </div>
               <p className="text-sm font-medium">{hw.questionText}</p>
               
@@ -273,6 +399,105 @@ export default function AdminLessonDetailsPage() {
           ))}
         </CardContent>
       </Card>
+
+      {/* Edit Scenario Dialog */}
+      <Dialog open={isEditingScript} onOpenChange={setIsEditingScript}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Редактировать сценарий аудио</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Текст сценария</Label>
+              <Textarea 
+                value={tempScript} 
+                onChange={(e) => setTempScript(e.target.value)}
+                className="min-h-[300px] font-mono text-sm"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEditingScript(false)}>Отмена</Button>
+              <Button onClick={handleUpdateScript}>Сохранить сценарий</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Teacher Note Dialog */}
+      <Dialog open={!!editingNote} onOpenChange={(open) => !open && setEditingNote(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Редактировать заметки учителя (ИИ)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Вопросы (JSON или текст)</Label>
+              <Textarea 
+                value={noteQuestions} 
+                onChange={(e) => setNoteQuestions(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ответы (JSON или текст)</Label>
+              <Textarea 
+                value={noteAnswers} 
+                onChange={(e) => setNoteAnswers(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Советы</Label>
+              <Input 
+                value={noteTips} 
+                onChange={(e) => setNoteTips(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingNote(null)}>Отмена</Button>
+              <Button onClick={handleUpdateNote}>Сохранить</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Homework Dialog */}
+      <Dialog open={!!editingHomework} onOpenChange={(open) => !open && setEditingHomework(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Редактировать задание ДЗ</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Текст задания</Label>
+              <Textarea 
+                value={hwQuestionText} 
+                onChange={(e) => setHwQuestionText(e.target.value)}
+              />
+            </div>
+            {editingHomework?.options && (
+              <div className="space-y-2">
+                <Label>Варианты (JSON массив)</Label>
+                <Input 
+                  value={hwOptions} 
+                  onChange={(e) => setHwOptions(e.target.value)}
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Правильный ответ</Label>
+              <Input 
+                value={hwCorrectAnswer} 
+                onChange={(e) => setHwCorrectAnswer(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingHomework(null)}>Отмена</Button>
+              <Button onClick={handleUpdateHomework}>Сохранить</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

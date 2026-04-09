@@ -85,8 +85,15 @@ function compareAnswers(
   correct: string,
   exerciseType: string
 ): boolean {
-  // Exact match for multiple choice and true/false
-  if (exerciseType === 'MULTIPLE_CHOICE' || exerciseType === 'TRUE_FALSE') {
+  // Exact match for multiple choice, true/false, and most AI-generated tasks (Vocab/Grammar/etc)
+  if (
+    exerciseType === 'MULTIPLE_CHOICE' || 
+    exerciseType === 'TRUE_FALSE' ||
+    exerciseType === 'VOCABULARY' ||
+    exerciseType === 'GRAMMAR' ||
+    exerciseType === 'READING' ||
+    exerciseType === 'LISTENING'
+  ) {
     return student === correct;
   }
 
@@ -98,6 +105,7 @@ function compareAnswers(
     return levenshteinDistance(student, correct) <= 1;
   }
 
+  // For SPEAKING and WRITING, we don't auto-grade (handled by teacher)
   return false;
 }
 

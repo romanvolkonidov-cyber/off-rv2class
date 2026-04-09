@@ -281,7 +281,10 @@ adminRouter.post(
 
           await prisma.lesson.update({
             where: { id: lessonId },
-            data: { aiStatus: 'completed' },
+            data: { 
+              aiStatus: 'completed',
+              listeningScript: content.listening_script || null,
+            },
           });
 
           console.log(`✅ AI content generated for lesson ${lessonId}`);
@@ -400,6 +403,21 @@ adminRouter.put('/homework/:homeworkId', async (req, res: Response): Promise<voi
   } catch (error) {
     console.error('Update homework error:', error);
     res.status(500).json({ error: 'Ошибка обновления задания' });
+  }
+});
+
+// PUT /api/admin/lessons/:id/script — Update AI listening script
+adminRouter.put('/lessons/:id/script', async (req, res: Response): Promise<void> => {
+  try {
+    const { listeningScript } = req.body;
+    const lesson = await prisma.lesson.update({
+      where: { id: req.params.id },
+      data: { listeningScript },
+    });
+    res.json(lesson);
+  } catch (error) {
+    console.error('Update lesson script error:', error);
+    res.status(500).json({ error: 'Ошибка обновления сценария' });
   }
 });
 

@@ -10,7 +10,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Initialize Firebase securely
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
+// Initialize Firebase only if the API key is present (to prevent build-time crashes)
+let app;
+let auth: any;
+
+if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined") {
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  auth = getAuth(app);
+} else {
+  // During build process or if env vars are missing
+  console.warn("⚠️ Firebase API Key is missing. Skipping initialization.");
+  auth = null;
+}
+
 export { app, auth };
