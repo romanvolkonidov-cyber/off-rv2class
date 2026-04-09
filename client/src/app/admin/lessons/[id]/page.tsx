@@ -174,6 +174,48 @@ export default function AdminLessonDetailsPage() {
                       {slide.videoUrl && <Badge variant="secondary" className="text-purple-600 bg-purple-50">Видео прикреплено</Badge>}
                     </div>
                   </div>
+
+                  {/* Teacher Notes (AI Generated) */}
+                  {slide.teacherNote && (
+                    <div className="p-3 bg-muted/30 rounded-lg border border-border space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase">
+                        🤖 ИИ Заметки для учителя
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs font-medium text-primary mb-1">Вопросы для обсуждения:</p>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {(() => {
+                              try {
+                                const qs = JSON.parse(slide.teacherNote.suggestedQuestions);
+                                return qs.map((q: string, i: number) => <li key={i}>{q}</li>);
+                              } catch {
+                                return <li>{slide.teacherNote.suggestedQuestions}</li>;
+                              }
+                            })()}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-green-600 mb-1">Ожидаемые ответы:</p>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {(() => {
+                              try {
+                                const ans = JSON.parse(slide.teacherNote.correctAnswers);
+                                return ans.map((a: string, i: number) => <li key={i}>{a}</li>);
+                              } catch {
+                                return <li>{slide.teacherNote.correctAnswers}</li>;
+                              }
+                            })()}
+                          </ul>
+                        </div>
+                      </div>
+                      {slide.teacherNote.tips && (
+                        <div className="pt-2 border-t text-xs text-muted-foreground italic">
+                          💡 Совет: {slide.teacherNote.tips}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -192,7 +234,24 @@ export default function AdminLessonDetailsPage() {
                 <Badge>{hw.exerciseType}</Badge>
                 {hw.needsHumanGrading && <Badge variant="secondary">Ручная проверка</Badge>}
               </div>
-              <p className="text-sm">{hw.questionText}</p>
+              <p className="text-sm font-medium">{hw.questionText}</p>
+              
+              {hw.options && (
+                <div className="pl-4 border-l-2 border-primary/20 space-y-1">
+                  {(() => {
+                    try {
+                      const options = JSON.parse(hw.options);
+                      return options.map((opt: string, i: number) => (
+                        <div key={i} className={`text-xs p-1.5 rounded ${opt === hw.correctAnswer ? 'bg-green-100/50 text-green-700 font-medium' : 'bg-muted/50'}`}>
+                          {opt} {opt === hw.correctAnswer && '✅'}
+                        </div>
+                      ));
+                    } catch {
+                      return <p className="text-xs">{hw.options}</p>;
+                    }
+                  })()}
+                </div>
+              )}
               
               <div className="flex items-center gap-3 pt-2">
                 <label className="cursor-pointer">
