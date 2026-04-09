@@ -47,6 +47,7 @@ export default function TeacherDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [studentName, setStudentName] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [history, setHistory] = useState<SessionHistory[]>([]);
   const [activeTab, setActiveTab] = useState<'library' | 'history'>('library');
@@ -170,11 +171,11 @@ export default function TeacherDashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">{t('teacher.myStudents')}</CardTitle>
             <Dialog open={isAddingStudent} onOpenChange={setIsAddingStudent}>
-              <DialogTrigger asChild>
+              <DialogTrigger render={
                 <Button variant="outline" size="sm" className="cursor-pointer" id="add-student-btn">
                   + {t('teacher.addStudent')}
                 </Button>
-              </DialogTrigger>
+              } />
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>{t('teacher.addStudent')}</DialogTitle>
