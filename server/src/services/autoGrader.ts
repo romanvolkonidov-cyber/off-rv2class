@@ -34,7 +34,7 @@ export async function gradeHomeworkSubmission(
 
     // Normalize both strings for comparison
     const studentAnswer = normalizeAnswer(answer.answer);
-    const correctAnswer = normalizeAnswer(homework.correctAnswer);
+    const correctAnswer = normalizeAnswer(homework.correctAnswer || '');
 
     const isCorrect = compareAnswers(studentAnswer, correctAnswer, homework.exerciseType);
 
