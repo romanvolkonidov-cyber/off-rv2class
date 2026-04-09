@@ -52,7 +52,8 @@ export default function LoginPage() {
         
         // Use Zustand store to manually set user state (since it bypasses authStore login function)
         // Wait, authStore.login might be doing raw API calls. We need to update authStore or just save token
-        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('rv2class_token', res.data.token);
+        localStorage.setItem('rv2class_user', JSON.stringify(res.data.user));
         window.location.reload(); 
       } else {
         // Login in Firebase
@@ -61,7 +62,8 @@ export default function LoginPage() {
         
         // Send to backend to get JWT session
         const res = await api.post('/auth/firebase-login', { idToken });
-        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('rv2class_token', res.data.token);
+        localStorage.setItem('rv2class_user', JSON.stringify(res.data.user));
         window.location.reload();
       }
     } catch (err: any) {
