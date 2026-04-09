@@ -65,6 +65,7 @@ export default function LoginPage() {
         window.location.reload();
       }
     } catch (err: any) {
+      console.error('Firebase Login Error:', err);
       if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         toast.error('Неверный email или пароль');
       } else if (err.code === 'auth/email-already-in-use') {
