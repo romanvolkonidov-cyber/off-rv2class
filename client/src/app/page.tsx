@@ -43,12 +43,12 @@ export default function LoginPage() {
     const trimmedEmail = (loginEmail || '').trim();
     const trimmedPassword = (loginPassword || '').trim();
 
-    console.log('🚀 [v1.2] Attempting Firebase Login...');
+    console.log('🚀 [v1.4] Attempting Firebase Login...');
     console.log('📧 Email Sent:', `"${trimmedEmail}"`);
 
     if (!trimmedEmail) {
       console.error('❌ FATAL: performLogin was called with an EMPTY email!');
-      toast.error('Ошибка: Email не может быть пустым');
+      toast.error('Ошибка: Email не может быть пустым. Попробуйте ввести его еще раз.');
       return;
     }
 
@@ -98,7 +98,22 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await performLogin(email, password, isRegisterMode ? name : undefined);
+    
+    // EXTREME FALLBACK: If React state is empty, scrape the DOM directly
+    let finalEmail = email;
+    let finalPassword = password;
+    
+    if (!finalEmail) {
+      const emailEl = document.getElementById('email') as HTMLInputElement;
+      if (emailEl?.value) finalEmail = emailEl.value;
+    }
+    
+    if (!finalPassword) {
+      const passEl = document.getElementById('password') as HTMLInputElement;
+      if (passEl?.value) finalPassword = passEl.value;
+    }
+
+    await performLogin(finalEmail, finalPassword, isRegisterMode ? name : undefined);
   };
 
   if (user) return null;
@@ -202,7 +217,7 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Demo credentials hint */}
+          {/* Demo credentials hint - NOW OUTSIDE FORM */}
           <div className="mt-6 pt-4 border-t border-border/50">
             <p className="text-xs text-muted-foreground text-center mb-2">Демо-аккаунты:</p>
             <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground">
