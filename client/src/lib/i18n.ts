@@ -18,6 +18,9 @@ i18n
       loadPath: '/locales/{{lng}}/{{ns}}.json',
     },
     defaultNS: 'common',
+    react: {
+      useSuspense: false, // Prevents Next.js static generation from hanging during Vercel builds
+    },
   });
 
 export default i18n;
