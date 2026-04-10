@@ -44,6 +44,10 @@ export default function LoginPage() {
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
+    console.log('🚀 Attempting Firebase Login...');
+    console.log('📧 Email (raw):', `"${email}"`);
+    console.log('📧 Email (trimmed):', `"${trimmedEmail}"`);
+
     try {
       if (isRegisterMode) {
         // Create user in Firebase
@@ -53,8 +57,6 @@ export default function LoginPage() {
         // Send to backend to create Teacher in Prisma
         const res = await api.post('/auth/firebase-login', { idToken, name: name.trim(), role: 'TEACHER' });
         
-        // Use Zustand store to manually set user state (since it bypasses authStore login function)
-        // Wait, authStore.login might be doing raw API calls. We need to update authStore or just save token
         localStorage.setItem('rv2class_token', res.data.token);
         localStorage.setItem('rv2class_user', JSON.stringify(res.data.user));
         window.location.reload(); 
@@ -70,11 +72,18 @@ export default function LoginPage() {
         window.location.reload();
       }
     } catch (err: any) {
-      console.error('Firebase Login Error:', err);
+      console.error('❌ Firebase Login Error Details:', {
+        code: err.code,
+        message: err.message,
+        emailSent: trimmedEmail
+      });
+      
       if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         toast.error('Неверный email или пароль');
       } else if (err.code === 'auth/email-already-in-use') {
         toast.error('Такой email уже зарегистрирован');
+      } else if (err.code === 'auth/invalid-email') {
+        toast.error('Неверный формат email. Проверьте адрес.');
       } else if (err.response?.data?.error) {
         toast.error(err.response.data.error);
       } else {
@@ -188,6 +197,13 @@ export default function LoginPage() {
           <div className="mt-6 pt-4 border-t border-border/50">
             <p className="text-xs text-muted-foreground text-center mb-2">Демо-аккаунты:</p>
             <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground">
+              <button
+                type="button"
+                className="text-left px-2 py-1.5 rounded hover:bg-primary/10 transition-colors cursor-pointer border border-primary/20"
+                onClick={() => { setEmail('romanvolkonidov@gmail.com'); setPassword('admin123'); }}
+              >
+                🛡️ Roman Admin: romanvolkonidov@gmail.com / admin123
+              </button>
               <button
                 type="button"
                 className="text-left px-2 py-1.5 rounded hover:bg-accent transition-colors cursor-pointer"
