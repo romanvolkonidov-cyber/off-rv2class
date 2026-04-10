@@ -1,6 +1,6 @@
+import './utils/env.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
@@ -12,8 +12,6 @@ import { studentRouter } from './routes/student.js';
 import { lessonsRouter } from './routes/lessons.js';
 import { homeworkRouter } from './routes/homework.js';
 import { setupSocket } from './socket/index.js';
-
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
@@ -62,8 +60,8 @@ setupSocket(io);
 
 // Start server
 const PORT = parseInt(process.env.PORT || '4000', 10);
-httpServer.listen(PORT, () => {
-  console.log(`🚀 rv2class server running on http://localhost:${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 rv2class server running on http://0.0.0.0:${PORT}`);
   console.log(`📡 WebSocket server ready`);
 });
 

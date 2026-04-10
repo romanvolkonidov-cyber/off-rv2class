@@ -107,8 +107,16 @@ authRouter.post('/firebase-login', async (req, res: Response): Promise<void> => 
       },
     });
   } catch (error: any) {
-    console.error('Firebase Login error:', error);
-    res.status(401).json({ error: 'Недействительный Firebase токен', details: error.message });
+    console.error('❌ Firebase Login error (Detailed):', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    res.status(401).json({ 
+      error: 'Недействительный Firebase токен', 
+      details: error.message,
+      code: error.code 
+    });
   }
 });
 

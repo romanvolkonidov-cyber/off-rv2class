@@ -8,6 +8,12 @@ if (!admin.apps.length) {
     // But for simplicity during dev, requiring the key or using logic
     if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      
+      // Fix for private_key newlines in env variables
+      if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      }
+      
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });

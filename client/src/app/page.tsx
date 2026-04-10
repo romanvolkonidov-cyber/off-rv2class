@@ -31,7 +31,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (user) {
       const dashboardMap = {
-        ADMIN: '/admin',
+        ADMIN: '/teacher',
         TEACHER: '/teacher',
         STUDENT: '/student',
       };

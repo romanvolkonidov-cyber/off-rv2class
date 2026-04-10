@@ -33,6 +33,9 @@ ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
   echo "📦 Installing npm dependencies..."
   npm install
 
+  echo "📂 Creating necessary folders..."
+  mkdir -p uploads/temp
+
   echo "🗄 Updating Prisma..."
   npx prisma generate
   npx prisma db push --accept-data-loss
@@ -47,7 +50,8 @@ ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
       npm install -g pm2
   fi
   
-  pm2 restart rv2class-api || pm2 start dist/index.js --name "rv2class-api"
+  pm2 delete rv2class-api || true
+  pm2 start "npm start" --name "rv2class-api" --update-env
   pm2 save
   
   echo "🔥 Opening Firewall (Port 4000)..."

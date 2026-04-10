@@ -58,7 +58,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const navItems = navConfig[user.role] || [];
+  // If Admin is in teacher routes, show teacher nav. Otherwise show admin nav.
+  const navItems = user.role === 'ADMIN' 
+    ? (pathname.startsWith('/admin') ? navConfig.ADMIN : navConfig.TEACHER)
+    : (navConfig[user.role] || []);
   const initials = user.name
     .split(' ')
     .map((n) => n[0])
@@ -90,6 +93,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav items */}
         <nav className="flex-1 p-3 space-y-1">
+          {user.role === 'ADMIN' && (
+            <>
+              <button
+                onClick={() => router.push(pathname.startsWith('/admin') ? '/teacher' : '/admin')}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer bg-accent/50 text-accent-foreground border border-accent hover:bg-accent mb-4"
+              >
+                <span className="text-lg">{pathname.startsWith('/admin') ? '👨‍🏫' : '🛡️'}</span>
+                {pathname.startsWith('/admin') ? 'Перейти в режим Учителя' : 'Панель Администратора'}
+              </button>
+              <Separator className="mb-4" />
+            </>
+          )}
+
           {navItems.map((item) => {
             const isActive = pathname === item.href || 
               (item.href !== `/${user.role.toLowerCase()}` && pathname.startsWith(item.href));
