@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') 
+  ? '' // Use relative path for proxy in production
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000');
 
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
