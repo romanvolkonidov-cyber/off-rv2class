@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import '@/lib/i18n';
-import api from '@/lib/api';
+import api, { PROD_URL } from '@/lib/api';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
 import { useAuthStore } from '@/stores/auth';
 import { Button } from '@/components/ui/button';
@@ -467,7 +467,7 @@ function ClassroomContent() {
           {currentSlideData?.audioUrl && (
             <audio
               ref={audioRef}
-              src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${currentSlideData.audioUrl}`}
+              src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${currentSlideData.audioUrl}`}
               controls={role === 'teacher'}
               className={role === 'student' ? 'hidden' : 'h-8 w-64 max-w-full shadow-sm rounded-full bg-background border border-border/50'}
               onPlay={handleAudioPlay}
@@ -552,7 +552,7 @@ function ClassroomContent() {
               {/* Slide image */}
               {currentSlideData && (
                 <img
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${currentSlideData.imageUrl}`}
+                  src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${currentSlideData.imageUrl}`}
                   alt={`Slide ${currentSlide + 1}`}
                   className="absolute inset-0 w-full h-full object-contain"
                   draggable={false}
@@ -595,7 +595,7 @@ function ClassroomContent() {
               <div className="w-1/2 h-full bg-black rounded-xl shadow-xl overflow-hidden flex items-center justify-center relative">
                 <video
                   ref={videoRef}
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${currentSlideData.videoUrl}`}
+                  src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${currentSlideData.videoUrl}`}
                   controls={role === 'teacher'} // Only teacher has controls
                   className={`w-full h-full object-contain ${role === 'student' ? 'pointer-events-none' : ''}`}
                   onPlay={handleVideoPlay}

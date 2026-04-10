@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, use } from 'react';
 import { useTranslation } from 'react-i18next';
 import '@/lib/i18n';
-import api from '@/lib/api';
+import api, { PROD_URL } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -175,7 +175,7 @@ export default function HomeworkPage({ params }: { params: Promise<{ assignmentI
                   <div className="w-full bg-accent/50 p-3 rounded-lg flex items-center justify-center">
                     <audio 
                       controls 
-                      src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${question.audioUrl}`} 
+                      src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${question.audioUrl}`} 
                       className="w-full max-w-sm"
                     />
                   </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import api from '@/lib/api';
+import api, { PROD_URL } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -222,7 +222,7 @@ export default function AdminLessonDetailsPage() {
                 onDrop={(e) => onWidgetDragEnd(e, slide.id)}
               >
                 <img 
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${slide.imageUrl}`}
+                  src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${slide.imageUrl}`}
                   className="w-full h-full object-contain pointer-events-none"
                   alt={`Slide ${slide.orderIndex + 1}`}
                 />

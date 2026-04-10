@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// Define the official secure production base URL
+export const PROD_URL = 'https://158.220.94.77.sslip.io';
+
 const API_BASE = (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') 
-  ? '' // Use relative path for proxy in production
+  ? '' // Use relative path for proxy in production (proxied in next.config.js)
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000');
 
 const api = axios.create({

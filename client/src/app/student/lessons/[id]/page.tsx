@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import api from '@/lib/api';
+import api, { PROD_URL } from '@/lib/api';
 
 interface Slide {
   id: string;
@@ -63,7 +63,7 @@ export default function PastLessonViewerPage() {
           <div className="flex-1 relative bg-muted/30 flex items-center justify-center p-4 min-h-0">
             {currentSlideData ? (
               <img
-                src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${currentSlideData.imageUrl}`}
+                src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${currentSlideData.imageUrl}`}
                 alt={`Slide ${currentSlide + 1}`}
                 className="w-full h-full object-contain bg-white rounded shadow-sm"
               />
