@@ -242,6 +242,36 @@ teacherRouter.post('/classroom/start', async (req: AuthRequest, res: Response): 
   }
 });
 
+// GET /api/teacher/classroom/active — Get current active session for the teacher
+teacherRouter.get('/classroom/active', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const session = await prisma.classSession.findFirst({
+      where: { teacherId: req.user!.userId, isActive: true },
+      include: {
+        lesson: {
+          include: {
+            slides: {
+              orderBy: { orderIndex: 'asc' },
+              include: { teacherNote: true },
+            },
+          },
+        },
+        students: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (!session) {
+      res.status(404).json({ error: 'Нет активного урока' });
+      return;
+    }
+
+    res.json(session);
+  } catch (error) {
+    console.error('Get active classroom error:', error);
+    res.status(500).json({ error: 'Ошибка получения активного урока' });
+  }
+});
+
 // PUT /api/teacher/classroom/:sessionId/end
 teacherRouter.put('/classroom/:sessionId/end', async (req: AuthRequest, res: Response): Promise<void> => {
   try {

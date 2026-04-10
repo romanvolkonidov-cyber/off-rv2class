@@ -274,6 +274,18 @@ export default function TeacherDashboard() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
+                            variant="secondary"
+                            className="cursor-pointer"
+                            onClick={() => {
+                              api.post('/teacher/classroom/start', { lessonId: lesson.id })
+                                .then(res => router.push(`/classroom?session=${res.data.id}&role=teacher`))
+                                .catch(() => toast.error('Ошибка предварительного просмотра'));
+                            }}
+                          >
+                            👁️ {t('common.view')}
+                          </Button>
+                          <Button
+                            size="sm"
                             className="gradient-brand text-white shadow-sm cursor-pointer"
                             onClick={() => openStartClassModal(lesson.id)}
                             id={`start-class-${lesson.id}`}

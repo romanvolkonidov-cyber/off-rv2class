@@ -81,13 +81,9 @@ function ClassroomContent() {
       try {
         let res;
         if (role === 'teacher') {
-          // Teacher already has session data from starting the class
-          res = await api.get(`/lessons/${sessionId}`);
-          // Build session-like structure  
-          const sessionRes = await api.get(`/teacher/classroom/active`).catch(() => null);
-          if (!sessionRes) {
-            // Session data was already set when starting class
-          }
+          res = await api.get('/teacher/classroom/active');
+          setSession(res.data);
+          setCurrentSlide(res.data.currentSlide);
         }
         // For students, get the active session
         if (role === 'student') {
