@@ -40,11 +40,17 @@ export default function LoginPage() {
   }, [user, router]);
 
   const performLogin = async (loginEmail: string, loginPassword: string, loginName?: string) => {
-    const trimmedEmail = loginEmail.trim();
-    const trimmedPassword = loginPassword.trim();
+    const trimmedEmail = (loginEmail || '').trim();
+    const trimmedPassword = (loginPassword || '').trim();
 
-    console.log('🚀 Attempting Firebase Login...');
+    console.log('🚀 [v1.2] Attempting Firebase Login...');
     console.log('📧 Email Sent:', `"${trimmedEmail}"`);
+
+    if (!trimmedEmail) {
+      console.error('❌ FATAL: performLogin was called with an EMPTY email!');
+      toast.error('Ошибка: Email не может быть пустым');
+      return;
+    }
 
     try {
       if (isRegisterMode && loginName) {
