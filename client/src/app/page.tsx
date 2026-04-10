@@ -253,6 +253,13 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Legal Footer for Payment Gateways */}
+      <div className="absolute bottom-6 w-full text-center flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs font-medium text-muted-foreground z-10 px-4">
+        <a href="/legal/privacy" className="hover:text-primary transition-colors underline underline-offset-2">Политика конфиденциальности</a>
+        <a href="/legal/terms" className="hover:text-primary transition-colors underline underline-offset-2">Пользовательское соглашение</a>
+        <span className="opacity-70">© {new Date().getFullYear()} rv2class. Все права защищены.</span>
+      </div>
     </div>
   );
 }

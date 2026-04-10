@@ -30,11 +30,7 @@ export default function StudentPortal() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sessionRes, hwRes] = await Promise.all([
-          api.get('/student/active-session').catch(() => ({ data: null })), // Fails safely if none
-          api.get('/student/homework')
-        ]);
-        if (sessionRes.data) setActiveSession(sessionRes.data);
+        const hwRes = await api.get('/student/homework');
         setHomeworks(hwRes.data || []);
       } catch (error) {
         console.error("Failed to fetch student data", error);
@@ -43,6 +39,21 @@ export default function StudentPortal() {
       }
     };
     fetchData();
+
+    // Polling: Check every 5 seconds if the teacher started a class
+    const checkActiveSession = async () => {
+      try {
+        const sessionRes = await api.get('/student/classroom/active');
+        setActiveSession(sessionRes.data);
+      } catch (error) {
+        setActiveSession(null);
+      }
+    };
+
+    checkActiveSession(); // Initial check
+    const interval = setInterval(checkActiveSession, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
