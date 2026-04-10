@@ -212,6 +212,7 @@ adminRouter.post(
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { lessonId } = req.params;
+      const { level } = req.body;
       const files = req.files as Express.Multer.File[];
 
       if (!files || files.length === 0) {
@@ -222,7 +223,7 @@ adminRouter.post(
       // Update lesson status
       await prisma.lesson.update({
         where: { id: lessonId as string },
-        data: { aiStatus: 'processing' },
+        data: { aiStatus: 'processing', level: (level as string) || 'B1' },
       });
 
       // CLEAN SLATE: Delete previous slides, homework and notes for this lesson
@@ -258,7 +259,7 @@ adminRouter.post(
       );
 
       // Trigger AI content generation (async — don't block the response)
-      generateLessonContent(lessonId as string, collagePath, processedSlides.length)
+      generateLessonContent(lessonId as string, collagePath, processedSlides.length, (level as string) || 'B1')
         .then(async (content) => {
           // Save teacher notes
           for (const note of content.teacher_notes) {
@@ -278,12 +279,19 @@ adminRouter.post(
           // Save homework
           for (let i = 0; i < content.homework.length; i++) {
             const hw = content.homework[i];
+            
+            // Shuffle options so the correct answer isn't predictably first
+            let shuffledOptions = hw.options;
+            if (shuffledOptions && Array.isArray(shuffledOptions)) {
+              shuffledOptions = [...shuffledOptions].sort(() => Math.random() - 0.5);
+            }
+
             await prisma.homework.create({
               data: {
                 lessonId: lessonId as string,
                 questionText: hw.question_text,
                 exerciseType: hw.exercise_type,
-                options: hw.options ? JSON.stringify(hw.options) : null,
+                options: shuffledOptions ? JSON.stringify(shuffledOptions) : null,
                 correctAnswer: hw.correct_answer,
                 needsHumanGrading: hw.needs_human_grading,
                 orderIndex: i,
@@ -372,10 +380,10 @@ adminRouter.post('/slides/:slideId/video', videoUpload.single('video'), async (r
 // PUT /api/admin/slides/:slideId — Update slide widget coords
 adminRouter.put('/slides/:slideId', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { audioWidgetX, audioWidgetY, audioWidgetScale } = req.body;
+    const { audioWidgetX, audioWidgetY, audioWidgetScale, youtubeUrl, youtubeStartTime } = req.body;
     const slide = await prisma.slide.update({
       where: { id: req.params.slideId as string },
-      data: { audioWidgetX, audioWidgetY, audioWidgetScale },
+      data: { audioWidgetX, audioWidgetY, audioWidgetScale, youtubeUrl, youtubeStartTime },
     });
     res.json(slide);
   } catch (error) {

@@ -36,9 +36,9 @@ IMPORTANT: Provide your response ONLY in valid JSON format with exactly three ro
 
 1. "teacher_notes" — An array of objects, one per slide. They must be concise and actionable for a teacher. Each MUST have:
    - "slide_number": Integer (1-indexed, matching the order of slides provided)
-   - "questions": Array of strings — exact questions the teacher should ask the student based on the slide's picture or content
-   - "answers": Array of strings — right answers if the slide has questions or gaps
-   - "tips": Optional string — if the slide contains a chart or grammar explanation, briefly highlight the most important points for the teacher to focus on
+   - "questions": Array of strings — exact questions the teacher should ask the student based on the slide's picture or content. (MUST BE IN ENGLISH)
+   - "answers": Array of strings — right answers if the slide contains gap-fill exercises, questions, or reading tasks. (MUST BE IN ENGLISH)
+   - "tips": Optional string — if the slide contains a chart or grammar explanation, briefly highlight the most important points for the teacher to focus on. (MUST BE IN RUSSIAN)
 
 2. "listening_script" — A highly detailed script for audio generation (like ElevenLabs or a human voice actor) that clearly relates to the lesson content. It must include exact spoken dialog, PLUS specific bracketed notes for [background sounds] (e.g. [cafe ambient noise, birds chirping]), [speaker roles/names], and [intonation/emotion] (e.g. [excited], [whispering]). This script will be used to generate the audio for the LISTENING homework task.
 
@@ -49,7 +49,7 @@ IMPORTANT: Provide your response ONLY in valid JSON format with exactly three ro
    - "correct_answer": String or null. (Must be a precise string for VOCABULARY, LISTENING, READING, and GRAMMAR so they can be auto-graded. Must be null for SPEAKING and WRITING).
    - "needs_human_grading": Boolean (Must be true for SPEAKING and WRITING. Must be false for the rest).
 
-Make sure the homework exercises directly test the material shown in the slides, but keep them reasonably sized (1 exercise for each type). All text content should be appropriate for ESL students studying English.`;
+CRITICAL INSTRUCTION: You must strictly teach and test ONLY the concepts, vocabulary, and grammar rules explicitly shown in the provided slides. Do not invent outside material. Tailor the complexity of your language to the specified CEFR level of the student. All general instructions, tips, and explanations MUST be in Russian language, but the target English words, answers, questions, and dialogue MUST remain in English.`;
 
 /**
  * Sends compressed slide images to Claude and returns structured teacher notes + homework.
@@ -58,7 +58,8 @@ Make sure the homework exercises directly test the material shown in the slides,
 export async function generateLessonContent(
   lessonId: string,
   collagePath: string,
-  slideCount: number
+  slideCount: number,
+  level: string = 'B1'
 ): Promise<AIGeneratedContent> {
   // If no API key, return stub data for development
   if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
@@ -80,7 +81,7 @@ export async function generateLessonContent(
       {
         role: 'user',
         content: [
-          { type: 'text', text: SYSTEM_PROMPT + `\n\nThere are ${slideCount} slides in this collage. Each is numbered from 1 to ${slideCount}.` },
+          { type: 'text', text: SYSTEM_PROMPT + `\n\nThe target student's CEFR level is ${level.toUpperCase()}.\nThere are ${slideCount} slides in this collage. Each is numbered from 1 to ${slideCount}.` },
           {
             type: 'image',
             source: {
@@ -95,7 +96,7 @@ export async function generateLessonContent(
   });
 
   // Extract text content from response
-  const textBlock = response.content.find((block) => block.type === 'text');
+  const textBlock = response.content.find((block: any) => block.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
     throw new Error('No text response from Claude');
   }

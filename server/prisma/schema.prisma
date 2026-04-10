@@ -115,6 +115,7 @@ model Lesson {
   orderIndex Int    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  level     String?  @default("B1") // CEFR level: A0, A1, A2, B1, B2, C1, C2
 
   // AI processing status
   aiStatus  String  @default("pending") // pending, processing, completed, failed
@@ -140,6 +141,8 @@ model Slide {
   audioWidgetX Float? // position X (percent)
   audioWidgetY Float? // position Y (percent)
   audioWidgetScale Float @default(1.0)
+  youtubeUrl  String? // Optional YouTube link
+  youtubeStartTime Int? // Start time in seconds
   createdAt   DateTime @default(now())
 
   teacherNote TeacherNote?
