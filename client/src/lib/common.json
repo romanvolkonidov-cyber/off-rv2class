@@ -1,0 +1,20 @@
+{
+  "auth": {
+    "login": "Войти",
+    "register": "Регистрация",
+    "email": "Электронная почта",
+    "password": "Пароль",
+    "logout": "Выйти"
+  },
+  "dashboard": {
+    "teacher_workspace": "Рабочая область преподавателя",
+    "student_portal": "Портал ученика",
+    "admin_panel": "Панель администратора"
+  },
+  "navigation": {
+    "library": "Библиотека уроков",
+    "students": "Мои ученики",
+    "gradebook": "Журнал оценок",
+    "settings": "Настройки"
+  }
+}
