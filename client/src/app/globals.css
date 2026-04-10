@@ -58,3 +58,17 @@
     --ring: 200 80% 45%;
   }
 }
+
+@layer utilities {
+  .gradient-brand {
+    @apply bg-gradient-to-br from-primary to-blue-600;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-br from-primary to-blue-600 bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl;
+  }
+}
