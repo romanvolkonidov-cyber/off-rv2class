@@ -16,6 +16,7 @@ rsync -av --delete \
   -e "ssh -o StrictHostKeyChecking=no" \
   --exclude node_modules \
   --exclude dev.db \
+  --exclude uploads \
   --exclude "*cache*" \
   "$LOCAL_DIR/server/" "$SSH_USER@$SERVER_IP:$REMOTE_DIR/"
 
