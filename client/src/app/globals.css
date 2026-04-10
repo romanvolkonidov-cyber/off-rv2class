@@ -62,13 +62,23 @@
 @layer utilities {
   .gradient-brand {
     @apply bg-gradient-to-br from-primary to-blue-600;
+    background: linear-gradient(to bottom right, hsl(var(--primary)), #2563eb);
   }
   
   .text-gradient {
     @apply bg-gradient-to-br from-primary to-blue-600 bg-clip-text text-transparent;
+    background: linear-gradient(to bottom right, hsl(var(--primary)), #2563eb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
   }
 
   .glass {
     @apply bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl;
+    background-color: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(24px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   }
 }
