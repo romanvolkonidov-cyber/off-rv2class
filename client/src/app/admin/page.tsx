@@ -130,6 +130,9 @@ export default function AdminDashboard() {
     }
   };
 
+  const fileInputRef = useState<HTMLInputElement | null>(null);
+  const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
       pending: { label: 'Ожидает', variant: 'outline' },
@@ -141,8 +144,33 @@ export default function AdminDashboard() {
     return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
   };
 
+  const triggerFileUpload = (lessonId: string) => {
+    console.log('🔘 Upload button clicked for lesson:', lessonId);
+    setCurrentLessonId(lessonId);
+    const input = document.getElementById('global-slide-upload') as HTMLInputElement;
+    if (input) {
+      input.click();
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Hidden Global Input */}
+      <input
+        id="global-slide-upload"
+        type="file"
+        multiple
+        accept="image/png,image/jpeg"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && currentLessonId) {
+            console.log('📁 Files selected:', e.target.files.length);
+            handleUploadSlides(currentLessonId, e.target.files);
+            // Reset input so the same file can be picked again if needed
+            e.target.value = '';
+          }
+        }}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -303,23 +331,17 @@ export default function AdminDashboard() {
 
                         <div className="flex items-center gap-2">
                           {/* Upload slides */}
-                          <label className="cursor-pointer">
-                            <input
-                              type="file"
-                              multiple
-                              accept="image/png,image/jpeg"
-                              className="hidden"
-                              onChange={(e) => {
-                                if (e.target.files) handleUploadSlides(lesson.id, e.target.files);
-                              }}
-                              disabled={uploadingLessonId === lesson.id}
-                            />
-                            <Button variant="outline" size="sm" disabled={uploadingLessonId === lesson.id}>
-                              <span>
-                                {uploadingLessonId === lesson.id ? '⏳ Загрузка...' : `📤 ${t('admin.uploadSlides')}`}
-                              </span>
-                            </Button>
-                          </label>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled={uploadingLessonId === lesson.id}
+                            onClick={() => triggerFileUpload(lesson.id)}
+                            className="cursor-pointer"
+                          >
+                            <span>
+                              {uploadingLessonId === lesson.id ? '⏳ Загрузка...' : `📤 ${t('admin.uploadSlides')}`}
+                            </span>
+                          </Button>
 
                           <Button
                             variant="secondary"
