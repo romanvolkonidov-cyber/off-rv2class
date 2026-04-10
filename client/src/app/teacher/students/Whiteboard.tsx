@@ -63,7 +63,9 @@ export function Whiteboard({ socket, slideIndex, isTeacher, tool, color = '#ff00
       fabricCanvas.forEachObject(obj => { obj.selectable = false; obj.evented = false; });
     }
 
-    return () => fabricCanvas.off('mouse:down', handleMouseDown);
+    return () => {
+      fabricCanvas.off('mouse:down', handleMouseDown);
+    };
   }, [tool, color, fabricCanvas, socket, slideIndex]);
 
   // Handle Socket Events & Emitting
