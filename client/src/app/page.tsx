@@ -41,14 +41,17 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
     try {
       if (isRegisterMode) {
         // Create user in Firebase
-        const fbUser = await createUserWithEmailAndPassword(auth, email, password);
+        const fbUser = await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
         const idToken = await fbUser.user.getIdToken();
         
         // Send to backend to create Teacher in Prisma
-        const res = await api.post('/auth/firebase-login', { idToken, name, role: 'TEACHER' });
+        const res = await api.post('/auth/firebase-login', { idToken, name: name.trim(), role: 'TEACHER' });
         
         // Use Zustand store to manually set user state (since it bypasses authStore login function)
         // Wait, authStore.login might be doing raw API calls. We need to update authStore or just save token
@@ -57,7 +60,7 @@ export default function LoginPage() {
         window.location.reload(); 
       } else {
         // Login in Firebase
-        const fbUser = await signInWithEmailAndPassword(auth, email, password);
+        const fbUser = await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
         const idToken = await fbUser.user.getIdToken();
         
         // Send to backend to get JWT session

@@ -47,6 +47,12 @@ ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
   pm2 restart rv2class-api || pm2 start npm --name "rv2class-api" -- run start
   pm2 save
   
+  echo "🔥 Opening Firewall (Port 4000)..."
+  echo "1401" | sudo -S ufw allow 4000/tcp || echo "⚠️ Could not run ufw, skipping..."
+
+  echo "👤 Initializing Admin and Demo Users..."
+  npm run init-admin
+
   echo "✅ BACKEND SUCCESSFULLY DEPLOYED!"
 EOF
 
