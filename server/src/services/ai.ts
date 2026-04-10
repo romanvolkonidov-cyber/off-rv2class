@@ -74,7 +74,7 @@ export async function generateLessonContent(
   console.log(`🤖 Sending collage for lesson ${lessonId} to Claude...`);
 
   const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 4096,
     messages: [
       {

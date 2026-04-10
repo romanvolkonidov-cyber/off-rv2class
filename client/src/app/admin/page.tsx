@@ -52,6 +52,15 @@ export default function AdminDashboard() {
     fetchCourses();
   }, [fetchCourses]);
 
+  // Polling for processing lessons
+  useEffect(() => {
+    const hasProcessing = courses.some(c => c.lessons.some(l => l.aiStatus === 'processing'));
+    if (hasProcessing) {
+      const interval = setInterval(fetchCourses, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [courses, fetchCourses]);
+
   const handleCreateCourse = async () => {
     if (!newCourseTitle.trim()) return;
     try {

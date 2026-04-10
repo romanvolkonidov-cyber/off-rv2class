@@ -225,6 +225,18 @@ adminRouter.post(
         data: { aiStatus: 'processing' },
       });
 
+      // CLEAN SLATE: Delete previous slides, homework and notes for this lesson
+      // This prevents "Unique constraint failed" on re-uploads
+      console.log(`🧹 Cleaning up old data for lesson ${lessonId}...`);
+      await prisma.homework.deleteMany({ where: { lessonId: lessonId as string } });
+      const oldSlides = await prisma.slide.findMany({ 
+        where: { lessonId: lessonId as string },
+        select: { id: true }
+      });
+      const oldSlideIds = oldSlides.map(s => s.id);
+      await prisma.teacherNote.deleteMany({ where: { slideId: { in: oldSlideIds } } });
+      await prisma.slide.deleteMany({ where: { lessonId: lessonId as string } });
+
       // Process images: resize + compress
       const processedSlides = await processSlideImages(lessonId as string, files);
       
