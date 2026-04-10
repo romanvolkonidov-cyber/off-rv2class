@@ -39,23 +39,21 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
+  const performLogin = async (loginEmail: string, loginPassword: string, loginName?: string) => {
+    const trimmedEmail = loginEmail.trim();
+    const trimmedPassword = loginPassword.trim();
 
     console.log('🚀 Attempting Firebase Login...');
-    console.log('📧 Email (raw):', `"${email}"`);
-    console.log('📧 Email (trimmed):', `"${trimmedEmail}"`);
+    console.log('📧 Email Sent:', `"${trimmedEmail}"`);
 
     try {
-      if (isRegisterMode) {
+      if (isRegisterMode && loginName) {
         // Create user in Firebase
         const fbUser = await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
         const idToken = await fbUser.user.getIdToken();
         
         // Send to backend to create Teacher in Prisma
-        const res = await api.post('/auth/firebase-login', { idToken, name: name.trim(), role: 'TEACHER' });
+        const res = await api.post('/auth/firebase-login', { idToken, name: loginName.trim(), role: 'TEACHER' });
         
         localStorage.setItem('rv2class_token', res.data.token);
         localStorage.setItem('rv2class_user', JSON.stringify(res.data.user));
@@ -90,6 +88,11 @@ export default function LoginPage() {
         toast.error(`Ошибка: ${err.message || 'Firebase Login Error'}`);
       }
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performLogin(email, password, isRegisterMode ? name : undefined);
   };
 
   if (user) return null;
@@ -200,28 +203,28 @@ export default function LoginPage() {
               <button
                 type="button"
                 className="text-left px-2 py-1.5 rounded hover:bg-primary/10 transition-colors cursor-pointer border border-primary/20"
-                onClick={() => { setEmail('romanvolkonidov@gmail.com'); setPassword('admin123'); }}
+                onClick={() => performLogin('romanvolkonidov@gmail.com', 'admin123')}
               >
                 🛡️ Roman Admin: romanvolkonidov@gmail.com / admin123
               </button>
               <button
                 type="button"
                 className="text-left px-2 py-1.5 rounded hover:bg-accent transition-colors cursor-pointer"
-                onClick={() => { setEmail('admin@rv2class.ru'); setPassword('admin123'); }}
+                onClick={() => performLogin('admin@rv2class.ru', 'admin123')}
               >
                 👑 admin@rv2class.ru / admin123
               </button>
               <button
                 type="button"
                 className="text-left px-2 py-1.5 rounded hover:bg-accent transition-colors cursor-pointer"
-                onClick={() => { setEmail('teacher@rv2class.ru'); setPassword('teacher123'); }}
+                onClick={() => performLogin('teacher@rv2class.ru', 'teacher123')}
               >
                 📚 teacher@rv2class.ru / teacher123
               </button>
               <button
                 type="button"
                 className="text-left px-2 py-1.5 rounded hover:bg-accent transition-colors cursor-pointer"
-                onClick={() => { setEmail('student@rv2class.ru'); setPassword('student123'); }}
+                onClick={() => performLogin('student@rv2class.ru', 'student123')}
               >
                 🎒 student@rv2class.ru / student123
               </button>
