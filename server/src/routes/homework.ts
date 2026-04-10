@@ -12,7 +12,7 @@ homeworkRouter.get('/lesson/:lessonId', async (req: AuthRequest, res: Response):
     const isTeacherOrAdmin = req.user!.role === 'TEACHER' || req.user!.role === 'ADMIN';
 
     const homework = await prisma.homework.findMany({
-      where: { lessonId: req.params.lessonId },
+      where: { lessonId: req.params.lessonId as string },
       orderBy: { orderIndex: 'asc' },
       select: {
         id: true,

@@ -107,11 +107,11 @@ studentRouter.get('/lessons/:lessonId', async (req: AuthRequest, res: Response):
     
     // Verify the student actually has an assignment for this lesson (authorization)
     const hasAccess = await prisma.homeworkAssignment.findFirst({
-      where: { studentId, lessonId: req.params.lessonId },
+      where: { studentId, lessonId: req.params.lessonId as string },
     });
 
     const attended = await prisma.classSession.findFirst({
-      where: { lessonId: req.params.lessonId, students: { some: { id: studentId } } }
+      where: { lessonId: req.params.lessonId as string, students: { some: { id: studentId } } }
     });
 
     if (!hasAccess && !attended) {
@@ -120,7 +120,7 @@ studentRouter.get('/lessons/:lessonId', async (req: AuthRequest, res: Response):
     }
 
     const lesson = await prisma.lesson.findUnique({
-      where: { id: req.params.lessonId },
+      where: { id: req.params.lessonId as string },
       include: {
         slides: {
           orderBy: { orderIndex: 'asc' },
@@ -149,7 +149,7 @@ studentRouter.get('/sessions/:sessionId', async (req: AuthRequest, res: Response
     // Check if student attended
     const attended = await prisma.classSession.findFirst({
       where: { 
-        id: req.params.sessionId, 
+        id: req.params.sessionId as string, 
         students: { some: { id: studentId } } 
       },
       include: {
@@ -183,7 +183,7 @@ studentRouter.get('/sessions/:sessionId', async (req: AuthRequest, res: Response
 studentRouter.get('/homework/:assignmentId', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const assignment = await prisma.homeworkAssignment.findFirst({
-      where: { id: req.params.assignmentId, studentId: req.user!.userId },
+      where: { id: req.params.assignmentId as string, studentId: req.user!.userId },
       include: {
         lesson: {
           include: {
@@ -229,7 +229,7 @@ studentRouter.post('/homework/:assignmentId/submit', async (req: AuthRequest, re
     }
 
     const assignment = await prisma.homeworkAssignment.findFirst({
-      where: { id: req.params.assignmentId, studentId: req.user!.userId },
+      where: { id: req.params.assignmentId as string, studentId: req.user!.userId },
     });
 
     if (!assignment) {
@@ -243,7 +243,7 @@ studentRouter.post('/homework/:assignmentId/submit', async (req: AuthRequest, re
     }
 
     // Auto-grade
-    const result = await gradeHomeworkSubmission(req.params.assignmentId, answers);
+    const result = await gradeHomeworkSubmission(req.params.assignmentId as string, answers);
 
     res.json({
       score: result.score,

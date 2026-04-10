@@ -12,7 +12,7 @@ lessonsRouter.get('/:lessonId', async (req: AuthRequest, res: Response): Promise
     const isTeacherOrAdmin = req.user!.role === 'TEACHER' || req.user!.role === 'ADMIN';
 
     const lesson = await prisma.lesson.findUnique({
-      where: { id: req.params.lessonId },
+      where: { id: req.params.lessonId as string },
       include: {
         course: { select: { title: true } },
         slides: {

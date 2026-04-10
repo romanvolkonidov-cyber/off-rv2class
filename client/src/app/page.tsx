@@ -89,7 +89,7 @@ export default function LoginPage() {
       } else if (err.code === 'auth/invalid-email') {
         toast.error('Неверный формат email. Проверьте адрес.');
       } else if (err.response?.data?.error) {
-        toast.error(err.response.data.error);
+        toast.error(String(err.response.data.error));
       } else {
         toast.error(`Ошибка: ${err.message || 'Firebase Login Error'}`);
       }

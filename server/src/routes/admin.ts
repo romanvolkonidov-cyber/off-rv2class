@@ -113,7 +113,7 @@ adminRouter.put('/courses/:id', async (req, res: Response): Promise<void> => {
   try {
     const { title, description, orderIndex } = req.body;
     const course = await prisma.course.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { title, description, orderIndex },
     });
     res.json(course);
@@ -126,7 +126,7 @@ adminRouter.put('/courses/:id', async (req, res: Response): Promise<void> => {
 // DELETE /api/admin/courses/:id
 adminRouter.delete('/courses/:id', async (req, res: Response): Promise<void> => {
   try {
-    await prisma.course.delete({ where: { id: req.params.id } });
+    await prisma.course.delete({ where: { id: req.params.id as string } });
     res.json({ success: true });
   } catch (error) {
     console.error('Delete course error:', error);
@@ -150,7 +150,7 @@ adminRouter.post('/courses/:courseId/lessons', async (req, res: Response): Promi
     const lesson = await prisma.lesson.create({
       data: {
         title,
-        courseId: req.params.courseId,
+        courseId: req.params.courseId as string,
       },
     });
     res.status(201).json(lesson);
@@ -164,7 +164,7 @@ adminRouter.post('/courses/:courseId/lessons', async (req, res: Response): Promi
 adminRouter.get('/lessons/:lessonId', async (req, res: Response): Promise<void> => {
   try {
     const lesson = await prisma.lesson.findUnique({
-      where: { id: req.params.lessonId },
+      where: { id: req.params.lessonId as string },
       include: {
         slides: {
           include: { teacherNote: true },
@@ -191,7 +191,7 @@ adminRouter.put('/lessons/:lessonId/publish', async (req, res: Response): Promis
   try {
     const { published } = req.body;
     const lesson = await prisma.lesson.update({
-      where: { id: req.params.lessonId },
+      where: { id: req.params.lessonId as string },
       data: { published },
     });
     res.json(lesson);
@@ -221,22 +221,22 @@ adminRouter.post(
 
       // Update lesson status
       await prisma.lesson.update({
-        where: { id: lessonId },
+        where: { id: lessonId as string },
         data: { aiStatus: 'processing' },
       });
 
       // Process images: resize + compress
-      const processedSlides = await processSlideImages(lessonId, files);
+      const processedSlides = await processSlideImages(lessonId as string, files);
       
       // Create economical collage
-      const collagePath = await createCollage(lessonId, processedSlides.map(s => s.compressedPath));
+      const collagePath = await createCollage(lessonId as string, processedSlides.map(s => s.compressedPath));
 
       // Save slides to DB
       const slideRecords = await Promise.all(
         processedSlides.map((slide, index) =>
           prisma.slide.create({
             data: {
-              lessonId,
+              lessonId: lessonId as string,
               orderIndex: index,
               imageUrl: slide.compressedPath,
               originalUrl: slide.originalPath,
@@ -246,7 +246,7 @@ adminRouter.post(
       );
 
       // Trigger AI content generation (async — don't block the response)
-      generateLessonContent(lessonId, collagePath, processedSlides.length)
+      generateLessonContent(lessonId as string, collagePath, processedSlides.length)
         .then(async (content) => {
           // Save teacher notes
           for (const note of content.teacher_notes) {
@@ -268,7 +268,7 @@ adminRouter.post(
             const hw = content.homework[i];
             await prisma.homework.create({
               data: {
-                lessonId,
+                lessonId: lessonId as string,
                 questionText: hw.question_text,
                 exerciseType: hw.exercise_type,
                 options: hw.options ? JSON.stringify(hw.options) : null,
@@ -280,11 +280,11 @@ adminRouter.post(
           }
 
           await prisma.lesson.update({
-            where: { id: lessonId },
+          where: { id: lessonId as string },
             data: { 
               aiStatus: 'completed',
               listeningScript: content.listening_script || null,
-            },
+            } as any,
           });
 
           console.log(`✅ AI content generated for lesson ${lessonId}`);
@@ -292,7 +292,7 @@ adminRouter.post(
         .catch(async (error) => {
           console.error(`❌ AI generation failed for lesson ${lessonId}:`, error);
           await prisma.lesson.update({
-            where: { id: lessonId },
+            where: { id: lessonId as string },
             data: { aiStatus: 'failed' },
           });
         });
@@ -322,7 +322,7 @@ adminRouter.post('/slides/:slideId/audio', audioUpload.single('audio'), async (r
 
     const audioUrl = `/uploads/temp/${file.filename}`; // Or move to persistent storage
     const slide = await prisma.slide.update({
-      where: { id: slideId },
+      where: { id: slideId as string },
       data: { audioUrl },
     });
 
@@ -346,7 +346,7 @@ adminRouter.post('/slides/:slideId/video', videoUpload.single('video'), async (r
 
     const videoUrl = `/uploads/temp/${file.filename}`;
     const slide = await prisma.slide.update({
-      where: { id: slideId },
+      where: { id: slideId as string },
       data: { videoUrl },
     });
 
@@ -362,7 +362,7 @@ adminRouter.put('/slides/:slideId', async (req: AuthRequest, res: Response): Pro
   try {
     const { audioWidgetX, audioWidgetY, audioWidgetScale } = req.body;
     const slide = await prisma.slide.update({
-      where: { id: req.params.slideId },
+      where: { id: req.params.slideId as string },
       data: { audioWidgetX, audioWidgetY, audioWidgetScale },
     });
     res.json(slide);
@@ -381,7 +381,7 @@ adminRouter.put('/teacher-notes/:noteId', async (req, res: Response): Promise<vo
   try {
     const { suggestedQuestions, correctAnswers, tips } = req.body;
     const note = await prisma.teacherNote.update({
-      where: { id: req.params.noteId },
+      where: { id: req.params.noteId as string },
       data: { suggestedQuestions, correctAnswers, tips },
     });
     res.json(note);
@@ -396,7 +396,7 @@ adminRouter.put('/homework/:homeworkId', async (req, res: Response): Promise<voi
   try {
     const { questionText, exerciseType, options, correctAnswer } = req.body;
     const hw = await prisma.homework.update({
-      where: { id: req.params.homeworkId },
+      where: { id: req.params.homeworkId as string },
       data: { questionText, exerciseType, options, correctAnswer },
     });
     res.json(hw);
@@ -411,8 +411,8 @@ adminRouter.put('/lessons/:id/script', async (req, res: Response): Promise<void>
   try {
     const { listeningScript } = req.body;
     const lesson = await prisma.lesson.update({
-      where: { id: req.params.id },
-      data: { listeningScript },
+      where: { id: req.params.id as string },
+      data: { listeningScript } as any,
     });
     res.json(lesson);
   } catch (error) {
@@ -434,7 +434,7 @@ adminRouter.post('/homework/:homeworkId/audio', audioUpload.single('audio'), asy
 
     const audioUrl = `/uploads/temp/${file.filename}`;
     const hw = await prisma.homework.update({
-      where: { id: homeworkId },
+      where: { id: homeworkId as string },
       data: { audioUrl },
     });
 
@@ -451,13 +451,13 @@ adminRouter.post('/lessons/:lessonId/homework', async (req, res: Response): Prom
     const { questionText, exerciseType, options, correctAnswer } = req.body;
 
     const maxOrder = await prisma.homework.findFirst({
-      where: { lessonId: req.params.lessonId },
+      where: { lessonId: req.params.lessonId as string },
       orderBy: { orderIndex: 'desc' },
     });
 
     const hw = await prisma.homework.create({
       data: {
-        lessonId: req.params.lessonId,
+        lessonId: req.params.lessonId as string,
         questionText,
         exerciseType,
         options,
@@ -475,7 +475,7 @@ adminRouter.post('/lessons/:lessonId/homework', async (req, res: Response): Prom
 // DELETE /api/admin/homework/:homeworkId
 adminRouter.delete('/homework/:homeworkId', async (req, res: Response): Promise<void> => {
   try {
-    await prisma.homework.delete({ where: { id: req.params.homeworkId } });
+    await prisma.homework.delete({ where: { id: req.params.homeworkId as string } });
     res.json({ success: true });
   } catch (error) {
     console.error('Delete homework error:', error);

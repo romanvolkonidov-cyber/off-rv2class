@@ -31,8 +31,8 @@ authRouter.post('/login', async (req, res: Response): Promise<void> => {
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      (process.env.JWT_SECRET || 'fallback_secret') as string,
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
     );
 
     res.json({
@@ -93,8 +93,8 @@ authRouter.post('/firebase-login', async (req, res: Response): Promise<void> => 
     // Generate our app's JWT token for the session
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      (process.env.JWT_SECRET || 'fallback_secret') as string,
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
     );
 
     res.json({
@@ -149,8 +149,8 @@ authRouter.post('/register/teacher', async (req, res: Response): Promise<void> =
 
     const token = jwt.sign(
       { userId: newUser.id, role: newUser.role },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      (process.env.JWT_SECRET || 'fallback_secret') as string,
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
     );
 
     res.status(201).json({

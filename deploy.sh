@@ -37,6 +37,9 @@ ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
   npx prisma generate
   npx prisma db push --accept-data-loss
 
+  echo "🏗️ Building TypeScript to JavaScript..."
+  npm run build
+
   echo "🔄 Restarting API via pm2..."
   if ! command -v pm2 &> /dev/null
   then
@@ -44,7 +47,7 @@ ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
       npm install -g pm2
   fi
   
-  pm2 restart rv2class-api || pm2 start npm --name "rv2class-api" -- run start
+  pm2 restart rv2class-api || pm2 start dist/index.js --name "rv2class-api"
   pm2 save
   
   echo "🔥 Opening Firewall (Port 4000)..."

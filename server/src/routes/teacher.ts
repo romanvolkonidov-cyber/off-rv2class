@@ -128,7 +128,7 @@ teacherRouter.delete('/students/:studentId', async (req: AuthRequest, res: Respo
   try {
     // Ensure the student belongs to this teacher
     const student = await prisma.user.findFirst({
-      where: { id: req.params.studentId, teacherId: req.user!.userId },
+      where: { id: req.params.studentId as string, teacherId: req.user!.userId },
     });
 
     if (!student) {
@@ -136,7 +136,7 @@ teacherRouter.delete('/students/:studentId', async (req: AuthRequest, res: Respo
       return;
     }
 
-    await prisma.user.delete({ where: { id: req.params.studentId } });
+    await prisma.user.delete({ where: { id: req.params.studentId as string } });
     res.json({ success: true });
   } catch (error) {
     console.error('Delete student error:', error);
@@ -177,7 +177,7 @@ teacherRouter.put('/gradebook/:assignmentId', async (req: AuthRequest, res: Resp
     const { gradeOverride, teacherComment } = req.body;
 
     const assignment = await prisma.homeworkAssignment.findFirst({
-      where: { id: req.params.assignmentId, teacherId: req.user!.userId },
+      where: { id: req.params.assignmentId as string, teacherId: req.user!.userId },
     });
 
     if (!assignment) {
@@ -186,7 +186,7 @@ teacherRouter.put('/gradebook/:assignmentId', async (req: AuthRequest, res: Resp
     }
 
     const updated = await prisma.homeworkAssignment.update({
-      where: { id: req.params.assignmentId },
+      where: { id: req.params.assignmentId as string },
       data: { gradeOverride, teacherComment },
     });
 
@@ -246,7 +246,7 @@ teacherRouter.post('/classroom/start', async (req: AuthRequest, res: Response): 
 teacherRouter.put('/classroom/:sessionId/end', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const session = await prisma.classSession.update({
-      where: { id: req.params.sessionId },
+      where: { id: req.params.sessionId as string },
       data: { isActive: false, endedAt: new Date() },
       include: {
         students: { select: { id: true, name: true, email: true } },
@@ -269,7 +269,7 @@ teacherRouter.get('/history', async (req: AuthRequest, res: Response): Promise<v
         lesson: { select: { id: true, title: true } },
         students: { select: { id: true, name: true, email: true } }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { startedAt: 'desc' }
     });
     res.json(history);
   } catch (error) {
