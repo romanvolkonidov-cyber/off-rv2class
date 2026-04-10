@@ -234,7 +234,7 @@ adminRouter.post(
         where: { lessonId: lessonId as string },
         select: { id: true }
       });
-      const oldSlideIds = oldSlides.map(s => s.id);
+      const oldSlideIds = oldSlides.map((s: any) => s.id);
       await prisma.teacherNote.deleteMany({ where: { slideId: { in: oldSlideIds } } });
       await prisma.slide.deleteMany({ where: { lessonId: lessonId as string } });
 
@@ -242,7 +242,7 @@ adminRouter.post(
       const processedSlides = await processSlideImages(lessonId as string, files);
       
       // Create economical collage
-      const collagePath = await createCollage(lessonId as string, processedSlides.map(s => s.compressedPath));
+      const collagePath = await createCollage(lessonId as string, processedSlides.map((s: any) => s.compressedPath));
 
       // Save slides to DB
       const slideRecords = await Promise.all(
