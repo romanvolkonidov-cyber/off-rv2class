@@ -137,10 +137,11 @@ rv2class/
 ### Task 2: UI Styling — "Slate & Blue" Educational Theme
 - Install Shadcn UI components (`npx shadcn@latest init`)
 - Custom color palette:
-  - Primary: Deep blue (`hsl(220, 70%, 50%)`) — trust, education
-  - Secondary: Slate (`hsl(215, 20%, 65%)`) — clean, professional
-  - Accent: Warm amber (`hsl(45, 90%, 55%)`) — CTAs, highlights
-  - Background: Cool gray (`hsl(220, 15%, 97%)`) light / `hsl(220, 20%, 10%)` dark
+- Layout Strategy: Mimic Off2Class with a persistent left sidebar for navigation and a wide, clean main content area.
+- Primary: Vibrant Blue/Teal (`hsl(200, 80%, 45%)`) — modern, engaging, similar to Off2Class primary actions
+- Secondary: Slate/Light Gray (`hsl(215, 15%, 90%)`) — clean backgrounds, card borders
+- Accent: Warm orange/amber (`hsl(35, 90%, 55%)`) — notifications, alerts
+- Background: Pure white (`hsl(0, 0%, 100%)`) for content cards, off-white (`hsl(210, 20%, 98%)`) for app background to create depth.
 - Dark mode support from day one
 
 ### Task 3: Russian Localization
@@ -298,9 +299,9 @@ model Subscription {
 - Only published lessons appear in teacher library
 
 ### Task 10: Teacher Workspace
-- **Lesson Library**: Browse all published courses/lessons, filterable
-- **My Students**: Roster with quick stats (homework completion rate)
-- **Start Class**: Big button per lesson → launches live classroom
+- **Layout**: Persistent left sidebar (Library, Students, Gradebook, Settings) to match Off2Class UX.
+- **Lesson Library**: Grid of lesson cards (thumbnail, title, level). Hovering shows a prominent "Start Class" and "Assign Homework" button.
+- **My Students**: Table roster with quick stats (homework completion rate, last active).
 
 ### Task 11: Direct Student Creation
 - Form in teacher workspace: name + email + password
@@ -314,9 +315,9 @@ model Subscription {
 - Export to CSV (nice-to-have)
 
 ### Task 13: Student Portal
-- **My Homework**: List of assigned homework with status (new / submitted / graded)
-- **Join Class**: Shows active class session (if teacher has started one)
-- Clean, minimal, distraction-free design
+- **Layout**: Top navigation bar only (no complex sidebar to prevent distraction).
+- **Join Class**: A massive, prominent banner at the top that only appears when the teacher starts a session.
+- **My Homework**: Large, clear cards for pending assignments on a clean white background.
 
 ---
 
@@ -380,10 +381,10 @@ const response = await anthropic.messages.create({
 - Pre-load adjacent slides for instant transitions
 
 ### Task 19: Teacher Notes Panel
-- Side panel (collapsible) on teacher's classroom view
-- Fetches `TeacherNote` for current slide from API
-- Shows: suggested questions, correct answers, tips
-- **Never sent to student's socket / never rendered on student UI**
+- **Layout constraint**: The classroom must have a massive central 16:9 container for the slide.
+- **Teacher view**: Bottom floating toolbar (Next/Prev, Pen, Eraser). Collapsible *right-hand sidebar* for Teacher Notes (fetches questions, answers, tips from API).
+- **Student view**: Centered slide, completely hidden right sidebar, simplified annotation toolbar.
+- **Never sent to student's socket / never rendered on student UI**.
 
 ### Task 20: Whiteboard (Fabric.js)
 - Transparent `<canvas>` overlaid on slide image
