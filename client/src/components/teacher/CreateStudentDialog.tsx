@@ -56,12 +56,12 @@ export function CreateStudentDialog({ onStudentCreated }: { onStudentCreated: ()
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger render={
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm cursor-pointer">
           <UserPlus className="w-4 h-4 mr-2" />
           {t('teacher.addStudent', 'Добавить ученика')}
         </Button>
-      </DialogTrigger>
+      } />
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{t('teacher.addStudentTitle', 'Регистрация нового ученика')}</DialogTitle>

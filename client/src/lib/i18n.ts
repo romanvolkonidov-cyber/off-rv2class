@@ -112,6 +112,17 @@ const resources = {
         peekNext: "Next Slide Notes",
         syncPrev: "Sync Previous Slide",
         syncNext: "Sync Next Slide",
+        teaserTitle: "Get Ready for the Lesson",
+        videoIntro: "Watch the introduction to dive into the topic...",
+        connected: "Connected",
+        disconnected: "Disconnected",
+        clear: "Clear",
+        textPlaceholder: "Type here...",
+        studentJoined: "Student joined the lesson",
+        studentLeft: "Student left the lesson",
+        annotationEnabled: "Teacher allowed you to draw",
+        annotationDisabled: "You can no longer draw",
+        loading: "Loading..."
       },
       teacher: {
         selectLesson: "Select a lesson to start teaching.",
@@ -196,19 +207,6 @@ const resources = {
         welcomeBack: "Welcome to your student panel and have a great day!",
         noWorkMsg: "Nothing to do right now. Time for a well-deserved break! 😊",
         reviewTips: "Tip: Re-visiting past slides helps lock in the new vocabulary!"
-      },
-      classroom: {
-        teaserTitle: "Get Ready for the Lesson",
-        videoIntro: "Watch the introduction to dive into the topic...",
-        connected: "Connected",
-        disconnected: "Disconnected",
-        clear: "Clear",
-        textPlaceholder: "Type here...",
-        studentJoined: "Student joined the lesson",
-        studentLeft: "Student left the lesson",
-        annotationEnabled: "Teacher allowed you to draw",
-        annotationDisabled: "You can no longer draw",
-        loading: "Loading..."
       },
       common: { loading: "Loading...", cancel: "Cancel", save: "Save", delete: "Delete", create: "Create", error: "Error", saved: "Saved", skip: "Skip" }
     }
@@ -322,6 +320,17 @@ const resources = {
         peekNext: "Следующие заметки",
         syncPrev: "Синхр. пред. слайд",
         syncNext: "Синхр. след. слайд",
+        teaserTitle: "Приготовьтесь к уроку",
+        videoIntro: "Смотрите вступление, чтобы погрузиться в тему...",
+        connected: "Подключено",
+        disconnected: "Нет связи",
+        clear: "Очистить",
+        textPlaceholder: "Текст...",
+        studentJoined: "Ученик присоединился к уроку",
+        studentLeft: "Ученик покинул урок",
+        annotationEnabled: "Учитель разрешил вам рисовать на доске",
+        annotationDisabled: "Вы больше не можете рисовать на доске",
+        loading: "Загрузка..."
       },
       teacher: {
         selectLesson: "Выберите урок для начала занятия.",
@@ -406,19 +415,6 @@ const resources = {
         welcomeBack: "Добро пожаловать в личный кабинет! Хорошего дня!",
         noWorkMsg: "На сегодня всё! Время для заслуженного отдыха! 😊",
         reviewTips: "Совет: Повторение пройденных слайдов помогает закрепить новые слова!"
-      },
-      classroom: {
-        teaserTitle: "Приготовьтесь к уроку",
-        videoIntro: "Смотрите вступление, чтобы погрузиться в тему...",
-        connected: "Подключено",
-        disconnected: "Нет связи",
-        clear: "Очистить",
-        textPlaceholder: "Текст...",
-        studentJoined: "Ученик присоединился к уроку",
-        studentLeft: "Ученик покинул урок",
-        annotationEnabled: "Учитель разрешил вам рисовать на доске",
-        annotationDisabled: "Вы больше не можете рисовать на доске",
-        loading: "Загрузка..."
       },
       common: { loading: "Загрузка...", cancel: "Отмена", save: "Сохранить", delete: "Удалить", create: "Создать", error: "Ошибка", saved: "Сохранено", skip: "Пропустить" }
     }
