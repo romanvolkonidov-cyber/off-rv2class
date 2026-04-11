@@ -41,8 +41,6 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <body className={`min-h-screen bg-background font-sans antialiased text-foreground ${geistSans.variable} ${geistMono.variable}`}>
-        {children}
-        <Toaster position="top-right" richColors />
         <I18nProvider>
           {children}
           <Toaster position="top-right" richColors />
