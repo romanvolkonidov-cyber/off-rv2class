@@ -234,7 +234,7 @@ export default function StudentPortal() {
                           {pastSessions.flatMap(s => s.observations.map(obs => ({ ...obs, lessonTitle: s.lesson.title }))).map((obs, idx) => (
                              <div key={idx} className="p-6 bg-[#FFE66D]/10 border-l-4 border-[#FFE66D] rounded-xl space-y-2">
                                 <p className="text-sm font-bold text-yellow-800 opacity-60 uppercase tracking-tighter">{obs.lessonTitle}</p>
-                                <p className="text-gray-700 italic">"{obs.content}"</p>
+                                <p className="text-gray-700 italic">&quot;{obs.content}&quot;</p>
                              </div>
                           ))}
                        </div>

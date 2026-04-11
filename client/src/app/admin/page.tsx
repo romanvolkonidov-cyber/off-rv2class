@@ -24,6 +24,7 @@ interface Course {
     published: boolean;
     aiStatus: string;
     aiError: string | null;
+    level: string;
     orderIndex: number;
   }[];
   orderIndex: number;
@@ -57,7 +58,7 @@ export default function AdminDashboard() {
     } catch {
       toast.error(t('admin.errorLoadCourses', 'Ошибка загрузки курсов'));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchCourses();

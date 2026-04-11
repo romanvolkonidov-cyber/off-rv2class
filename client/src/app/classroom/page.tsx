@@ -10,6 +10,7 @@ import { connectSocket, disconnectSocket } from '@/lib/socket';
 import { useAuthStore } from '@/stores/auth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import type { Socket } from 'socket.io-client';
@@ -40,11 +41,14 @@ interface SessionData {
   id: string;
   lessonId: string;
   currentSlide: number;
+  students: { id: string; name: string }[];
   lesson: {
     title: string;
+    level: string;
     slides: Slide[];
     teaserVideoUrl?: string;
     lessonVideoNotes?: string;
+    listeningScript?: string;
   };
 }
 
@@ -285,7 +289,7 @@ function ClassroomContent() {
     return () => {
       disconnectSocket();
     };
-  }, [sessionId, user, role, currentSlide, clearCanvas, drawRemotePath]);
+  }, [sessionId, user, role, currentSlide, clearCanvas, drawRemotePath, t]);
 
   // Canvas setup
   useEffect(() => {
@@ -739,7 +743,7 @@ function ClassroomContent() {
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
-                        onMouseLeaving={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
                       />
                       
                       {/* AUDIO WIDGET (IF TEACHER) */}

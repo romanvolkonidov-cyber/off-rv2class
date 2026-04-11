@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -83,11 +83,7 @@ export default function StudentProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchStudent();
-  }, [id]);
-
-  const fetchStudent = async () => {
+  const fetchStudent = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get(`/teacher/students/${id}/details`);
@@ -99,7 +95,11 @@ export default function StudentProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, t, router]);
+
+  useEffect(() => {
+    fetchStudent();
+  }, [fetchStudent]);
 
   const handleSaveGrade = async (assignmentId: string) => {
     try {
@@ -469,7 +469,7 @@ export default function StudentProfilePage() {
                   <h3 className="text-lg font-black flex items-center gap-3 mb-4">
                      <KeyRound className="w-5 h-5 text-orange-500" /> Account Security
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-8 font-medium italic">Manually reset the password for this student's access.</p>
+                  <p className="text-sm text-muted-foreground mb-8 font-medium italic">Manually reset the password for this student&apos;s access.</p>
                   
                   <div className="space-y-6">
                     <div className="space-y-2">
