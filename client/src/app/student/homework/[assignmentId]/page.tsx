@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { Clapperboard, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface HomeworkQuestion {
   id: string;
@@ -28,7 +29,13 @@ interface Assignment {
   score: number | null;
   lesson: {
     homework: HomeworkQuestion[];
+    homeworkVideoUrl?: string;
+    homeworkVideoQuestion?: string;
+    homeworkVideoOptions?: string;
+    homeworkVideoAnswer?: string;
   };
+  videoAnswer?: string;
+  isVideoCorrect?: boolean;
   responses: {
     homeworkId: string;
     studentAnswer: string;
@@ -42,8 +49,10 @@ export default function HomeworkPage({ params }: { params: Promise<{ assignmentI
   const router = useRouter();
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [videoAnswer, setVideoAnswer] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ score: number; correctCount: number; totalQuestions: number } | null>(null);
+  const [showTeaser, setShowTeaser] = useState(true);
 
   const fetchAssignment = useCallback(async () => {
     try {
@@ -58,6 +67,10 @@ export default function HomeworkPage({ params }: { params: Promise<{ assignmentI
         });
         setAnswers(saved);
       }
+      if (res.data.videoAnswer) {
+        setVideoAnswer(res.data.videoAnswer);
+        setShowTeaser(false); // Hide overlay if already answered
+      }
     } catch {
       toast.error('Ошибка загрузки задания');
     }
@@ -71,8 +84,10 @@ export default function HomeworkPage({ params }: { params: Promise<{ assignmentI
     if (!assignment) return;
 
     const unanswered = assignment.lesson.homework.filter((q) => !answers[q.id]?.trim());
-    if (unanswered.length > 0) {
-      toast.error(`Ответьте на все вопросы (осталось: ${unanswered.length})`);
+    const videoUnanswered = assignment.lesson.homeworkVideoUrl && !videoAnswer;
+
+    if (unanswered.length > 0 || videoUnanswered) {
+      toast.error(`Ответьте на все вопросы${videoUnanswered ? ' (включая видео)' : ''}`);
       return;
     }
 
@@ -85,6 +100,7 @@ export default function HomeworkPage({ params }: { params: Promise<{ assignmentI
 
       const res = await api.post(`/student/homework/${assignmentId}/submit`, {
         answers: formattedAnswers,
+        videoAnswer,
       });
 
       setResult(res.data);
@@ -109,7 +125,80 @@ export default function HomeworkPage({ params }: { params: Promise<{ assignmentI
   const questions = assignment.lesson.homework;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 relative">
+      {/* Homework Teaser / Video Task Overlay */}
+      {showTeaser && assignment?.lesson?.homeworkVideoUrl && (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-700">
+           <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-12 items-center">
+              {/* Video Section */}
+              <div className="flex-1 space-y-6 text-center w-full">
+                <div className="space-y-2">
+                  <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight">{t('homework.introTitle')}</h2>
+                  <p className="text-white/40 text-sm md:text-base uppercase tracking-widest font-bold">{t('homework.videoInstruction')}</p>
+                </div>
+                
+                <div className="relative aspect-video rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(255,255,255,0.1)] ring-1 ring-white/20">
+                   <video 
+                      src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${assignment.lesson.homeworkVideoUrl}`}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      controls
+                   />
+                </div>
+              </div>
+
+              {/* Interaction Section */}
+              <Card className="w-full lg:w-[450px] bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border-white/10 shadow-2xl overflow-hidden animate-in slide-in-from-right duration-1000">
+                 <CardHeader className="bg-white/5 border-b border-white/10 p-8">
+                    <CardTitle className="text-white text-xl flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
+                          <Clapperboard className="w-5 h-5 text-primary" />
+                       </div>
+                       {t('homework.videoTask')}
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-8 space-y-8">
+                    <div className="space-y-6">
+                       <h3 className="text-2xl font-medium text-neutral-100 leading-tight">
+                          {assignment.lesson.homeworkVideoQuestion}
+                       </h3>
+                       {assignment.lesson.homeworkVideoOptions && (
+                         <div className="space-y-3">
+                            {JSON.parse(assignment.lesson.homeworkVideoOptions).map((option: string) => (
+                               <label key={option} className={`flex items-center gap-4 p-5 rounded-3xl border transition-all cursor-pointer group ${
+                                  videoAnswer === option ? 'border-primary bg-primary/10 text-white shadow-[0_0_20px_rgba(var(--primary),0.2)]' : 'border-white/10 text-neutral-400 hover:bg-white/5'
+                               }`}>
+                                  <input 
+                                     type="radio" 
+                                     name="videoOption" 
+                                     value={option} 
+                                     checked={videoAnswer === option}
+                                     onChange={(e) => setVideoAnswer(e.target.value)}
+                                     className="sr-only"
+                                  />
+                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${videoAnswer === option ? 'border-primary' : 'border-neutral-600 group-hover:border-neutral-400'}`}>
+                                     {videoAnswer === option && <div className="w-3 h-3 rounded-full bg-primary" />}
+                                  </div>
+                                  <span className="text-lg font-medium">{option}</span>
+                               </label>
+                            ))}
+                         </div>
+                       )}
+                    </div>
+                    
+                    <Button 
+                       onClick={() => setShowTeaser(false)} 
+                       disabled={!videoAnswer}
+                       className="w-full h-16 rounded-[2rem] bg-white text-black hover:bg-neutral-200 font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                       {t('homework.confirmVideoTask')}
+                    </Button>
+                 </CardContent>
+              </Card>
+           </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

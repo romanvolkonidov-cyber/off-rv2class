@@ -52,7 +52,11 @@ studentRouter.get('/dashboard', async (req: AuthRequest, res: Response): Promise
       },
       include: {
         lesson: { select: { id: true, title: true } },
-        teacher: { select: { name: true } }
+        teacher: { select: { name: true } },
+        observations: {
+          where: { studentId },
+          select: { content: true, createdAt: true }
+        }
       },
       orderBy: { endedAt: 'desc' }
     });
@@ -159,6 +163,10 @@ studentRouter.get('/sessions/:sessionId', async (req: AuthRequest, res: Response
               orderBy: { orderIndex: 'asc' }
             }
           }
+        },
+        observations: {
+          where: { studentId },
+          select: { content: true, createdAt: true }
         }
       }
     });
@@ -172,6 +180,23 @@ studentRouter.get('/sessions/:sessionId', async (req: AuthRequest, res: Response
   } catch (error) {
     console.error('Get past session error:', error);
     res.status(500).json({ error: 'Ошибка загрузки архивного урока' });
+  }
+});
+
+// GET /api/student/homework — Get list of assignments
+studentRouter.get('/homework', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const assignments = await prisma.homeworkAssignment.findMany({
+      where: { studentId: req.user!.userId },
+      include: {
+        lesson: { select: { id: true, title: true, level: true } as any },
+      },
+      orderBy: { assignedAt: 'desc' },
+    });
+    res.json(assignments);
+  } catch (error) {
+    console.error('Get student homework error:', error);
+    res.status(500).json({ error: 'Ошибка получения заданий' });
   }
 });
 
@@ -242,8 +267,10 @@ studentRouter.post('/homework/:assignmentId/submit', async (req: AuthRequest, re
       return;
     }
 
+    const { videoAnswer } = req.body;
+    
     // Auto-grade
-    const result = await gradeHomeworkSubmission(req.params.assignmentId as string, answers);
+    const result = await gradeHomeworkSubmission(req.params.assignmentId as string, answers, videoAnswer);
 
     res.json({
       score: result.score,

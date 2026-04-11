@@ -5,8 +5,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/roles.js';
+import { generateLessonContent, refineLessonContent, AIGeneratedContent } from '../services/ai.js';
 import { processSlideImages, createCollage } from '../services/imageProcessor.js';
-import { generateLessonContent } from '../services/ai.js';
 
 export const adminRouter = Router();
 
@@ -76,8 +76,8 @@ adminRouter.get('/courses', async (_req, res: Response): Promise<void> => {
     const courses = await prisma.course.findMany({
       include: { 
         lessons: { 
-          select: { id: true, title: true, published: true, aiStatus: true, orderIndex: true },
-          orderBy: { orderIndex: 'asc' }
+          select: { id: true, title: true, published: true, aiStatus: true, aiError: true, orderIndex: true, level: true } as any,
+          orderBy: { orderIndex: 'asc' } as any
         } 
       },
       orderBy: { orderIndex: 'asc' },
@@ -186,6 +186,32 @@ adminRouter.get('/lessons/:lessonId', async (req, res: Response): Promise<void> 
   }
 });
 
+// PUT /api/admin/lessons/:lessonId
+adminRouter.put('/lessons/:lessonId', async (req, res: Response): Promise<void> => {
+  try {
+    const { title, level, orderIndex } = req.body;
+    const lesson = await prisma.lesson.update({
+      where: { id: req.params.lessonId as string },
+      data: { title, level, orderIndex } as any,
+    });
+    res.json(lesson);
+  } catch (error) {
+    console.error('Update lesson error:', error);
+    res.status(500).json({ error: 'Ошибка обновления урока' });
+  }
+});
+
+// DELETE /api/admin/lessons/:lessonId
+adminRouter.delete('/lessons/:lessonId', async (req, res: Response): Promise<void> => {
+  try {
+    await prisma.lesson.delete({ where: { id: req.params.lessonId as string } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete lesson error:', error);
+    res.status(500).json({ error: 'Ошибка удаления урока' });
+  }
+});
+
 // PUT /api/admin/lessons/:lessonId/publish
 adminRouter.put('/lessons/:lessonId/publish', async (req, res: Response): Promise<void> => {
   try {
@@ -227,13 +253,25 @@ adminRouter.post(
       });
 
       // CLEAN SLATE: Delete previous slides, homework and notes for this lesson
-      // This prevents "Unique constraint failed" on re-uploads
       console.log(`🧹 Cleaning up old data for lesson ${lessonId}...`);
-      await prisma.homework.deleteMany({ where: { lessonId: lessonId as string } });
+      
       const oldSlides = await prisma.slide.findMany({ 
-        where: { lessonId: lessonId as string },
-        select: { id: true }
+        where: { lessonId: lessonId as string }
       });
+
+      // Physically delete old images from disk
+      for (const s of oldSlides) {
+        try {
+          if (s.imageUrl) await fs.unlink(path.join(process.cwd(), s.imageUrl));
+          if (s.originalUrl) await fs.unlink(path.join(process.cwd(), s.originalUrl));
+          if (s.audioUrl) await fs.unlink(path.join(process.cwd(), s.audioUrl));
+          if (s.videoUrl) await fs.unlink(path.join(process.cwd(), s.videoUrl));
+        } catch (e) {
+          console.warn(`Could not delete file for slide ${s.id}`, e);
+        }
+      }
+
+      await prisma.homework.deleteMany({ where: { lessonId: lessonId as string } });
       const oldSlideIds = oldSlides.map((s: any) => s.id);
       await prisma.teacherNote.deleteMany({ where: { slideId: { in: oldSlideIds } } });
       await prisma.slide.deleteMany({ where: { lessonId: lessonId as string } });
@@ -260,60 +298,19 @@ adminRouter.post(
 
       // Trigger AI content generation (async — don't block the response)
       generateLessonContent(lessonId as string, collagePath, processedSlides.length, (level as string) || 'B1')
-        .then(async (content) => {
-          // Save teacher notes
-          for (const note of content.teacher_notes) {
-            const slide = slideRecords[note.slide_number - 1];
-            if (slide) {
-              await prisma.teacherNote.create({
-                data: {
-                  slideId: slide.id,
-                  suggestedQuestions: JSON.stringify(note.questions),
-                  correctAnswers: JSON.stringify(note.answers),
-                  tips: note.tips || null,
-                },
-              });
-            }
-          }
-
-          // Save homework
-          for (let i = 0; i < content.homework.length; i++) {
-            const hw = content.homework[i];
-            
-            // Shuffle options so the correct answer isn't predictably first
-            let shuffledOptions = hw.options;
-            if (shuffledOptions && Array.isArray(shuffledOptions)) {
-              shuffledOptions = [...shuffledOptions].sort(() => Math.random() - 0.5);
-            }
-
-            await prisma.homework.create({
-              data: {
-                lessonId: lessonId as string,
-                questionText: hw.question_text,
-                exerciseType: hw.exercise_type,
-                options: shuffledOptions ? JSON.stringify(shuffledOptions) : null,
-                correctAnswer: hw.correct_answer,
-                needsHumanGrading: hw.needs_human_grading,
-                orderIndex: i,
-              },
-            });
-          }
-
-          await prisma.lesson.update({
-          where: { id: lessonId as string },
-            data: { 
-              aiStatus: 'completed',
-              listeningScript: content.listening_script || null,
-            } as any,
-          });
-
+        .then(async (content: any) => {
+          await (saveAIContentToDb as any)(lessonId as string, content, slideRecords);
           console.log(`✅ AI content generated for lesson ${lessonId}`);
         })
-        .catch(async (error) => {
+        .catch(async (error: any) => {
           console.error(`❌ AI generation failed for lesson ${lessonId}:`, error);
+          const errorMsg = error.message || String(error);
           await prisma.lesson.update({
             where: { id: lessonId as string },
-            data: { aiStatus: 'failed' },
+            data: { 
+              aiStatus: 'failed',
+              aiError: errorMsg.substring(0, 500)
+            },
           });
         });
 
@@ -325,6 +322,18 @@ adminRouter.post(
     } catch (error) {
       console.error('Upload slides error:', error);
       res.status(500).json({ error: 'Ошибка загрузки слайдов' });
+    } finally {
+      // Clean up any remaining temporal multer files if pipeline failed midway
+      const files = req.files as Express.Multer.File[];
+      if (files) {
+        for (const file of files) {
+          try {
+            await fs.unlink(file.path);
+          } catch (e) {
+            // Ignore ENOENT (file already moved by fs.rename)
+          }
+        }
+      }
     }
   }
 );
@@ -406,8 +415,48 @@ adminRouter.put('/teacher-notes/:noteId', async (req, res: Response): Promise<vo
     });
     res.json(note);
   } catch (error) {
-    console.error('Update teacher note error:', error);
+    console.error('Update note error:', error);
     res.status(500).json({ error: 'Ошибка обновления заметки' });
+  }
+});
+
+// DELETE /api/admin/homework/:id
+adminRouter.delete('/homework/:id', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await prisma.homework.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete homework error:', error);
+    res.status(500).json({ error: 'Ошибка удаления задания' });
+  }
+});
+
+// POST /api/admin/lessons/:id/homework — Manually add a homework exercise
+adminRouter.post('/lessons/:id/homework', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { exerciseType, questionText, options, correctAnswer } = req.body;
+
+    const maxOrder = await prisma.homework.findFirst({
+      where: { lessonId: id },
+      orderBy: { orderIndex: 'desc' },
+    });
+
+    const homework = await prisma.homework.create({
+      data: {
+        lessonId: id,
+        exerciseType: exerciseType || 'GRAMMAR',
+        questionText: questionText || 'New Exercise',
+        options: options ? JSON.stringify(options) : null,
+        correctAnswer,
+        orderIndex: (maxOrder?.orderIndex || 0) + 1,
+        needsHumanGrading: (exerciseType === 'WRITING' || exerciseType === 'SPEAKING'),
+      },
+    });
+    res.status(201).json(homework);
+  } catch (error) {
+    console.error('Add homework error:', error);
+    res.status(500).json({ error: 'Ошибка добавления задания' });
   }
 });
 
@@ -417,7 +466,12 @@ adminRouter.put('/homework/:homeworkId', async (req, res: Response): Promise<voi
     const { questionText, exerciseType, options, correctAnswer } = req.body;
     const hw = await prisma.homework.update({
       where: { id: req.params.homeworkId as string },
-      data: { questionText, exerciseType, options, correctAnswer },
+      data: { 
+        questionText, 
+        exerciseType, 
+        options: options ? JSON.stringify(options) : undefined, 
+        correctAnswer 
+      } as any,
     });
     res.json(hw);
   } catch (error) {
@@ -465,43 +519,7 @@ adminRouter.post('/homework/:homeworkId/audio', audioUpload.single('audio'), asy
   }
 });
 
-// POST /api/admin/lessons/:lessonId/homework — Manually add homework question
-adminRouter.post('/lessons/:lessonId/homework', async (req, res: Response): Promise<void> => {
-  try {
-    const { questionText, exerciseType, options, correctAnswer } = req.body;
 
-    const maxOrder = await prisma.homework.findFirst({
-      where: { lessonId: req.params.lessonId as string },
-      orderBy: { orderIndex: 'desc' },
-    });
-
-    const hw = await prisma.homework.create({
-      data: {
-        lessonId: req.params.lessonId as string,
-        questionText,
-        exerciseType,
-        options,
-        correctAnswer,
-        orderIndex: (maxOrder?.orderIndex || 0) + 1,
-      },
-    });
-    res.status(201).json(hw);
-  } catch (error) {
-    console.error('Add homework error:', error);
-    res.status(500).json({ error: 'Ошибка добавления задания' });
-  }
-});
-
-// DELETE /api/admin/homework/:homeworkId
-adminRouter.delete('/homework/:homeworkId', async (req, res: Response): Promise<void> => {
-  try {
-    await prisma.homework.delete({ where: { id: req.params.homeworkId as string } });
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Delete homework error:', error);
-    res.status(500).json({ error: 'Ошибка удаления задания' });
-  }
-});
 
 // ==========================================
 // USERS MANAGEMENT
@@ -530,3 +548,298 @@ adminRouter.get('/users', async (req, res: Response): Promise<void> => {
     res.status(500).json({ error: 'Ошибка получения пользователей' });
   }
 });
+
+// POST /api/admin/lessons/:id/refine — Request AI to refine content
+adminRouter.post('/lessons/:id/refine', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      res.status(400).json({ error: 'Prompt is required' });
+      return;
+    }
+
+    const lesson = await prisma.lesson.findUnique({
+      where: { id },
+      include: { slides: { orderBy: { orderIndex: 'asc' } } }
+    });
+
+    if (!lesson || !lesson.slides.length) {
+      res.status(404).json({ error: 'Lesson not found or has no slides' });
+      return;
+    }
+
+    // Mark as processing
+    await prisma.lesson.update({
+      where: { id },
+      data: { aiStatus: 'processing' }
+    });
+
+    // Extract collage info
+    const collagePath = `uploads/collages/collage-${id}.jpg`;
+
+    res.json({ message: 'Refinement started...' });
+
+    // ASYNC REFINEMENT
+    refineLessonContent(id, collagePath, lesson.slides.length, prompt, lesson.level || 'B1')
+      .then(async (content) => {
+        // CLEAN UP OLD AI CONTENT BEFORE SAVING NEW (BUT PRESERVE SLIDES)
+        await prisma.homework.deleteMany({ where: { lessonId: id } });
+        const oldSlideIds = lesson.slides.map(s => s.id);
+        await prisma.teacherNote.deleteMany({ where: { slideId: { in: oldSlideIds } } });
+
+        await (saveAIContentToDb as any)(id as string, content, lesson.slides);
+        console.log(`✅ AI content refined for lesson ${id}`);
+      })
+      .catch(async (error: any) => {
+        console.error(`❌ AI refinement failed:`, error);
+        await prisma.lesson.update({
+          where: { id: id as string },
+          data: { aiStatus: 'failed', aiError: error.message || String(error) } as any
+        });
+      });
+  } catch (error) {
+    console.error('Refine lesson error:', error);
+    res.status(500).json({ error: 'Error refining content' });
+  }
+});
+
+// POST /api/admin/lessons/:id/teasers/video
+adminRouter.post('/lessons/:id/teasers/video', videoUpload.single('video'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { type } = req.body; // 'teaser' or 'homework'
+    const file = req.file;
+
+    if (!file) {
+      res.status(400).json({ error: 'Video file is required' });
+      return;
+    }
+
+    const videoUrl = `/uploads/temp/${file.filename}`;
+    const updateData = type === 'homework' ? { homeworkVideoUrl: videoUrl } : { teaserVideoUrl: videoUrl };
+
+    const lesson = await prisma.lesson.update({
+      where: { id },
+      data: updateData as any
+    });
+
+    res.json(lesson);
+  } catch (error) {
+    console.error('Teaser upload error:', error);
+    res.status(500).json({ error: 'Error uploading teaser video' });
+  }
+});
+
+// DELETE /api/admin/slides/:id — Individual slide deletion with re-ordering
+adminRouter.delete('/slides/:id', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const slide = await prisma.slide.findUnique({ where: { id } });
+    if (!slide) {
+      res.status(404).json({ error: 'Slide not found' });
+      return;
+    }
+
+    // Unlink files
+    try {
+      if (slide.imageUrl) await fs.unlink(path.join(process.cwd(), slide.imageUrl));
+      if (slide.originalUrl) await fs.unlink(path.join(process.cwd(), slide.originalUrl));
+      if (slide.audioUrl) await fs.unlink(path.join(process.cwd(), slide.audioUrl));
+      if (slide.videoUrl) await fs.unlink(path.join(process.cwd(), slide.videoUrl));
+    } catch (e) {
+      console.warn('File cleanup failed for deleted slide', e);
+    }
+
+    const { lessonId, orderIndex } = slide;
+
+    // Atomic transaction: Delete + Re-order
+    await prisma.$transaction([
+      prisma.slide.delete({ where: { id } }),
+      prisma.slide.updateMany({
+        where: { lessonId, orderIndex: { gt: orderIndex } },
+        data: { orderIndex: { decrement: 1 } }
+      })
+    ]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete slide error:', error);
+    res.status(500).json({ error: 'Error deleting slide' });
+  }
+});
+
+// PUT /api/admin/slides/:id/replace — Replace slide image
+adminRouter.put('/slides/:id/replace', upload.single('slide'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'Image file is required' });
+      return;
+    }
+
+    const oldSlide = await prisma.slide.findUnique({ where: { id } });
+    if (!oldSlide) {
+      res.status(404).json({ error: 'Slide not found' });
+      return;
+    }
+
+    // Process new image
+    const processed = await processSlideImages(oldSlide.lessonId, [file]);
+    const { compressedPath, originalPath } = processed[0];
+
+    // Cleanup old files
+    try {
+      if (oldSlide.imageUrl) await fs.unlink(path.join(process.cwd(), oldSlide.imageUrl));
+      if (oldSlide.originalUrl) await fs.unlink(path.join(process.cwd(), oldSlide.originalUrl));
+    } catch (e) { /* ignore */ }
+
+    const updatedSlide = await prisma.slide.update({
+      where: { id },
+      data: {
+        imageUrl: compressedPath,
+        originalUrl: originalPath
+      },
+      include: { teacherNote: true }
+    });
+
+    res.json(updatedSlide);
+  } catch (error) {
+    console.error('Replace slide image error:', error);
+    res.status(500).json({ error: 'Error replacing slide image' });
+  }
+});
+
+// PUT /api/admin/slides/:id/regenerate-note — Regenerate notes for one slide
+adminRouter.post('/slides/:id/regenerate-note', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const slide = await prisma.slide.findUnique({ 
+      where: { id },
+      include: { lesson: true }
+    });
+    if (!slide) {
+      res.status(404).json({ error: 'Slide not found' });
+      return;
+    }
+
+    // We use the full lesson collage for context, but only update this slide's note
+    const collagePath = `uploads/collages/collage-${slide.lessonId}.jpg`;
+    
+    // Request AI update
+    const content = await refineLessonContent(
+      slide.lessonId, 
+      collagePath, 
+      1, // just one slide for this call's logic (though logic usually does all)
+      `Please regenerate specifically the teacher note and questions for slide number ${slide.orderIndex + 1}. The others are fine.`
+    );
+
+    const noteData = content.teacher_notes.find(n => n.slide_number === slide.orderIndex + 1);
+    
+    if (noteData) {
+      const updatedNote = await prisma.teacherNote.upsert({
+        where: { slideId: id },
+        update: {
+          suggestedQuestions: JSON.stringify(noteData.questions),
+          correctAnswers: JSON.stringify(noteData.answers),
+          tips: noteData.tips
+        },
+        create: {
+          slideId: id,
+          suggestedQuestions: JSON.stringify(noteData.questions),
+          correctAnswers: JSON.stringify(noteData.answers),
+          tips: noteData.tips
+        }
+      });
+      res.json(updatedNote);
+    } else {
+      res.status(500).json({ error: 'AI did not return data for this slide' });
+    }
+  } catch (error) {
+    console.error('Regenerate note error:', error);
+    res.status(500).json({ error: 'Error regenerating note' });
+  }
+});
+
+
+// PUT /api/admin/lessons/:id/settings — Update lesson-level settings
+adminRouter.put('/lessons/:id/settings', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { title, published, orderIndex, level, listeningScript } = req.body;
+
+    const lesson = await prisma.lesson.update({
+      where: { id },
+      data: { 
+        title, 
+        published, 
+        orderIndex, 
+        level, 
+        listeningScript 
+      },
+    });
+
+    res.json(lesson);
+  } catch (error) {
+    console.error('Update lesson settings error:', error);
+    res.status(500).json({ error: 'Ошибка обновления настроек урока' });
+  }
+});
+
+/**
+ * HELPER: Atomically saves AI content to the database.
+ */
+async function saveAIContentToDb(lessonId: string, content: AIGeneratedContent, slideRecords: any[]) {
+  // 1. Save Teacher Notes
+  for (const note of content.teacher_notes) {
+    const slide = slideRecords[note.slide_number - 1];
+    if (slide) {
+      await prisma.teacherNote.create({
+        data: {
+          slideId: slide.id,
+          suggestedQuestions: JSON.stringify(note.questions),
+          correctAnswers: JSON.stringify(note.answers),
+          tips: note.tips || null,
+        },
+      });
+    }
+  }
+
+  // 2. Save Homework
+  for (let i = 0; i < content.homework.length; i++) {
+    const hw = content.homework[i];
+    let shuffledOptions = hw.options;
+    if (shuffledOptions && Array.isArray(shuffledOptions)) {
+      shuffledOptions = [...shuffledOptions].sort(() => Math.random() - 0.5);
+    }
+
+    await prisma.homework.create({
+      data: {
+        lessonId: lessonId,
+        questionText: hw.question_text,
+        exerciseType: hw.exercise_type,
+        options: shuffledOptions ? JSON.stringify(shuffledOptions) : null,
+        correctAnswer: hw.correct_answer,
+        needsHumanGrading: hw.needs_human_grading,
+        orderIndex: i,
+      },
+    });
+  }
+
+  // 3. Complete Lesson
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: { 
+      aiStatus: 'completed',
+      listeningScript: content.listening_script || null,
+      teaserVideoPrompt: content.lesson_video_prompt || null,
+      lessonVideoNotes: content.lesson_video_notes || null,
+      homeworkVideoPrompt: content.homework_video_prompt || null,
+      homeworkVideoQuestion: content.homework_video_question || null,
+      homeworkVideoOptions: content.homework_video_options ? JSON.stringify(content.homework_video_options) : null,
+      homeworkVideoAnswer: content.homework_video_answer || null,
+    } as any,
+  });
+}

@@ -52,6 +52,7 @@ model User {
   email     String   @unique
   password  String
   name      String
+  avatarUrl String?
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -75,6 +76,10 @@ model User {
 
   // Teacher's assigned homework
   assignedHomework HomeworkAssignment[] @relation("TeacherAssignments")
+
+  // Observations (Feedback)
+  observationsReceived LessonObservation[] @relation("StudentObservations")
+  observationsGiven    LessonObservation[] @relation("TeacherObservations")
 
   @@index([role])
   @@index([teacherId])
@@ -115,11 +120,18 @@ model Lesson {
   orderIndex Int    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  level     String?  @default("B1") // CEFR level: A0, A1, A2, B1, B2, C1, C2
-
-  // AI processing status
   aiStatus  String  @default("pending") // pending, processing, completed, failed
-  listeningScript String?
+  aiError   String? 
+  level     String  @default("B1")
+  listeningScript     String?
+  teaserVideoUrl      String?
+  teaserVideoPrompt   String?
+  lessonVideoNotes    String?
+  homeworkVideoUrl    String?
+  homeworkVideoPrompt String?
+  homeworkVideoQuestion String?
+  homeworkVideoOptions  String? // JSON
+  homeworkVideoAnswer   String?
 
   slides         Slide[]
   homework       Homework[]
@@ -200,6 +212,8 @@ model HomeworkAssignment {
   assignedAt     DateTime @default(now())
   submittedAt    DateTime?
   score          Float?
+  videoAnswer    String?
+  isVideoCorrect Boolean?
   gradeOverride  Float?
   teacherComment String?
 
@@ -242,7 +256,23 @@ model ClassSession {
 
   // Attendees
   students     User[]   @relation("SessionAttendees")
+  observations LessonObservation[]
 
   @@index([teacherId])
   @@index([isActive])
+}
+
+model LessonObservation {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation("StudentObservations", fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User     @relation("TeacherObservations", fields: [teacherId], references: [id], onDelete: Cascade)
+  sessionId String?
+  session   ClassSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+  @@index([teacherId])
 }

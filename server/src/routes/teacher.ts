@@ -24,6 +24,7 @@ teacherRouter.get('/library', async (_req, res: Response): Promise<void> => {
           select: {
             id: true,
             title: true,
+            level: true,
             orderIndex: true,
             _count: { select: { slides: true, homework: true } },
           },
@@ -141,6 +142,126 @@ teacherRouter.delete('/students/:studentId', async (req: AuthRequest, res: Respo
   } catch (error) {
     console.error('Delete student error:', error);
     res.status(500).json({ error: 'Ошибка удаления ученика' });
+  }
+});
+
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
+
+const storage = multer.diskStorage({
+  destination: async (_req, _file, cb) => {
+    const dir = path.join(process.cwd(), 'uploads', 'avatars');
+    await fs.mkdir(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueName = `avatar-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
+});
+const avatarUpload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
+// GET /api/teacher/students/:id/details
+teacherRouter.get('/students/:id/details', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const student = await prisma.user.findFirst({
+      where: { id: req.params.id as string, teacherId: req.user!.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        createdAt: true,
+        attendedSessions: {
+          include: { lesson: { select: { title: true, level: true } } },
+          orderBy: { startedAt: 'desc' }
+        },
+        homeworkAssignments: {
+          include: { lesson: { select: { title: true, level: true } }, responses: { include: { homework: true } } },
+          orderBy: { assignedAt: 'desc' }
+        },
+        observationsReceived: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+    if (!student) {
+      res.status(404).json({ error: 'Ученик не найден' });
+      return;
+    }
+    res.json(student);
+  } catch (error) {
+    console.error('Get student details error:', error);
+    res.status(500).json({ error: 'Ошибка получения профиля ученика' });
+  }
+});
+
+// PUT /api/teacher/students/:id/settings
+teacherRouter.put('/students/:id/settings', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { password } = req.body;
+    const student = await prisma.user.findFirst({
+      where: { id: req.params.id as string, teacherId: req.user!.userId },
+    });
+    
+    if (!student) {
+      res.status(404).json({ error: 'Ученик не найден' });
+      return;
+    }
+    
+    if (password) {
+      // Find firebase user by email to update password
+      try {
+        const fbUser = await admin.auth().getUserByEmail(student.email);
+        await admin.auth().updateUser(fbUser.uid, { password });
+      } catch (err) {
+        console.warn("Could not update Firebase password, perhaps this user doesn't exist in Firebase yet", err);
+      }
+      const hashedPassword = await bcrypt.hash(password, 12);
+      await prisma.user.update({
+        where: { id: student.id },
+        data: { password: hashedPassword }
+      });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update student settings error:', error);
+    res.status(500).json({ error: 'Ошибка обновления настроек' });
+  }
+});
+
+// POST /api/teacher/students/:id/photo
+teacherRouter.post('/students/:id/photo', avatarUpload.single('avatar'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const student = await prisma.user.findFirst({
+      where: { id: req.params.id as string, teacherId: req.user!.userId },
+    });
+    
+    if (!student) {
+      res.status(404).json({ error: 'Ученик не найден' });
+      return;
+    }
+    
+    if (!req.file) {
+      res.status(400).json({ error: 'Файл не загружен' });
+      return;
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const updated = await prisma.user.update({
+      where: { id: student.id },
+      data: { avatarUrl }
+    });
+    
+    res.json(updated);
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    res.status(500).json({ error: 'Ошибка загрузки фото' });
   }
 });
 
@@ -338,5 +459,30 @@ teacherRouter.post('/assign-homework', async (req: AuthRequest, res: Response): 
   } catch (error) {
     console.error('Assign homework error:', error);
     res.status(500).json({ error: 'Ошибка назначения домашнего задания' });
+  }
+});
+// POST /api/teacher/classroom/observations — Record a yellow note during a session
+teacherRouter.post('/classroom/observations', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { studentId, sessionId, content } = req.body;
+
+    if (!studentId || !content) {
+      res.status(400).json({ error: 'ID ученика и содержание обязательны' });
+      return;
+    }
+
+    const observation = await prisma.lessonObservation.create({
+      data: {
+        studentId,
+        teacherId: req.user!.userId,
+        sessionId,
+        content,
+      },
+    });
+
+    res.status(201).json(observation);
+  } catch (error) {
+    console.error('Create observation error:', error);
+    res.status(500).json({ error: 'Ошибка сохранения заметки' });
   }
 });

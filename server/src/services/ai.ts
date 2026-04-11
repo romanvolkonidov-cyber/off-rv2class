@@ -26,30 +26,31 @@ export interface AIGeneratedContent {
   teacher_notes: AITeacherNote[];
   homework: AIHomeworkItem[];
   listening_script?: string;
+  lesson_video_prompt: string;
+  lesson_video_notes: string;
+  homework_video_prompt: string;
+  homework_video_question: string;
+  homework_video_options: string[];
+  homework_video_answer: string;
 }
 
 const SYSTEM_PROMPT = `You are an expert ESL (English as a Second Language) teacher and curriculum designer.
 
 I am uploading slide images from a lesson. Analyze the grammar, vocabulary, exercises, and concepts taught in these slides.
 
-IMPORTANT: Provide your response ONLY in valid JSON format with exactly three root keys: "teacher_notes", "homework", and "listening_script".
+IMPORTANT: Provide your response ONLY in valid JSON format with exactly nine root keys: "teacher_notes", "homework", "listening_script", "lesson_video_prompt", "lesson_video_notes", "homework_video_prompt", "homework_video_question", "homework_video_options", and "homework_video_answer".
+1. "teacher_notes" — An array of objects for EACH slide. Include "slide_number", "questions" (array), "answers" (array), and "tips" (string).
+2. "homework" — An array of 5-8 various exercises (VOCABULARY, GRAMMAR, etc.) based on the slides.
+3. "listening_script" — A script for a listening exercise.
 
-1. "teacher_notes" — An array of objects, one per slide. They must be concise and actionable for a teacher. Each MUST have:
-   - "slide_number": Integer (1-indexed, matching the order of slides provided)
-   - "questions": Array of strings — exact questions the teacher should ask the student based on the slide's picture or content. (MUST BE IN ENGLISH)
-   - "answers": Array of strings — right answers if the slide contains gap-fill exercises, questions, or reading tasks. (MUST BE IN ENGLISH)
-   - "tips": Optional string — if the slide contains a chart or grammar explanation, briefly highlight the most important points for the teacher to focus on. (MUST BE IN RUSSIAN)
+4. "lesson_video_prompt" — A highly descriptive, cinematic prompt (approx. 50-75 words) for an 8-second AI video. It should describe a visually engaging "hook" representing the lesson's main topic in a real-world scenario. Use vivid sensory details.
+5. "lesson_video_notes" — Specific questions or discussion points for the teacher to ask while watching the lesson intro video. (MUST BE IN RUSSIAN)
+6. "homework_video_prompt" — A short, engaging 8-second prompt. It MUST describe a scene with one VERY SPECIFIC visual detail (e.g. an object's color, a number, a specific action) that can be verified by watching.
+7. "homework_video_question" — A multiple-choice question based on that specific visual detail. (MUST BE IN ENGLISH)
+8. "homework_video_options" — Array of 4 strings for the question.
+9. "homework_video_answer" — The correct string from the options.
 
-2. "listening_script" — A highly detailed script for audio generation (like ElevenLabs or a human voice actor) that clearly relates to the lesson content. It must include exact spoken dialog, PLUS specific bracketed notes for [background sounds] (e.g. [cafe ambient noise, birds chirping]), [speaker roles/names], and [intonation/emotion] (e.g. [excited], [whispering]). This script will be used to generate the audio for the LISTENING homework task.
-
-3. "homework" — An array of exactly 6 exercises, one for each specific skill. Each object MUST have:
-   - "question_text": String — the full task/question text (For the LISTENING task, reference the listening_script)
-   - "exercise_type": One of "VOCABULARY", "LISTENING", "SPEAKING", "READING", "WRITING", "GRAMMAR"
-   - "options": Array of strings (required ONLY if it's a multiple choice question, null otherwise)
-   - "correct_answer": String or null. (Must be a precise string for VOCABULARY, LISTENING, READING, and GRAMMAR so they can be auto-graded. Must be null for SPEAKING and WRITING).
-   - "needs_human_grading": Boolean (Must be true for SPEAKING and WRITING. Must be false for the rest).
-
-CRITICAL INSTRUCTION: You must strictly teach and test ONLY the concepts, vocabulary, and grammar rules explicitly shown in the provided slides. Do not invent outside material. Tailor the complexity of your language to the specified CEFR level of the student. All general instructions, tips, and explanations MUST be in Russian language, but the target English words, answers, questions, and dialogue MUST remain in English.`;
+CRITICAL INSTRUCTION: Ensure the pedagogical density is high. Do not use generic placeholders.`;
 
 /**
  * Sends compressed slide images to Claude and returns structured teacher notes + homework.
@@ -63,7 +64,7 @@ export async function generateLessonContent(
 ): Promise<AIGeneratedContent> {
   // If no API key, return stub data for development
   if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
-    console.log(`⚠️ No Anthropic API key configured. Generating stub content for lesson ${lessonId}`);
+    console.log(`No Anthropic API key configured. Generating stub content for lesson ${lessonId}`);
     return generateStubContent(slideCount);
   }
 
@@ -72,7 +73,7 @@ export async function generateLessonContent(
   const buffer = await fs.readFile(absolutePath);
   const base64 = buffer.toString('base64');
 
-  console.log(`🤖 Sending collage for lesson ${lessonId} to Claude...`);
+  console.log(`Sending collage for lesson ${lessonId} to Claude...`);
 
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -114,6 +115,64 @@ export async function generateLessonContent(
   );
 
   return parsed;
+}
+
+/**
+ * Refines existing lesson content based on a user-provided correction prompt.
+ * Uses the same slide collage as context.
+ */
+export async function refineLessonContent(
+  lessonId: string,
+  collagePath: string,
+  slideCount: number,
+  correctionPrompt: string,
+  level: string = 'B1'
+): Promise<AIGeneratedContent> {
+  if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
+    return generateStubContent(slideCount);
+  }
+
+  const absolutePath = path.join(process.cwd(), collagePath);
+  const buffer = await fs.readFile(absolutePath);
+  const base64 = buffer.toString('base64');
+
+  const REFINE_PROMPT = `${SYSTEM_PROMPT}
+  
+  You previously generated content for this lesson, but the user wants to refine it with these specific instructions:
+  "${correctionPrompt}"
+  
+  Please regenerate the full JSON (teacher_notes, homework, listening_script) incorporating these changes while remaining faithful to the original slides content.`;
+
+  console.log(`🤖 Refining content for lesson ${lessonId} with Claude...`);
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: REFINE_PROMPT + `\n\nTarget CEFR Level: ${level.toUpperCase()}\nSlides: ${slideCount}.` },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: base64,
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const textBlock = response.content.find((block: any) => block.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') throw new Error('No text response from Claude');
+
+  const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON found in Claude response');
+
+  return JSON.parse(jsonMatch[0]);
 }
 
 /**
@@ -172,5 +231,15 @@ function generateStubContent(slideCount: number): AIGeneratedContent {
     },
   ];
 
-  return { teacher_notes, homework, listening_script: "This is a short script for the teacher to read..." };
+  return { 
+    teacher_notes, 
+    homework, 
+    listening_script: "This is a short script for the teacher to read...",
+    lesson_video_prompt: "A cinematic shot of a person learning English in a modern office, bright colors, high quality.",
+    lesson_video_notes: "Спросите ученика: Что делает человек на видео? Как он себя чувствует?",
+    homework_video_prompt: "A student sitting at a desk with a laptop, focused and motivated, wearing a blue scarf.",
+    homework_video_question: "What color is the student's scarf?",
+    homework_video_options: ["Red", "Blue", "Green", "Yellow"],
+    homework_video_answer: "Blue"
+  };
 }

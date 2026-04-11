@@ -1,145 +1,171 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/auth';
-import { io, Socket } from 'socket.io-client';
-import { Loader2, ChevronLeft, ChevronRight, PenTool, Eraser, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
+import { Loader2, Search, Trash2 } from 'lucide-react';
+import api from '@/lib/api';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { CreateStudentDialog } from '@/components/teacher/CreateStudentDialog';
 
-export default function LiveClassroomPage() {
-  const { id: sessionId } = useParams();
+interface Student {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  _count: {
+    homeworkAssignments: number;
+  };
+}
+
+export default function StudentsPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [isConnected, setIsConnected] = useState(false);
+  const { t } = useTranslation();
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  const fetchStudents = async () => {
+    try {
+      const res = await api.get('/teacher/students');
+      setStudents(res.data);
+    } catch (error) {
+      console.error("Failed to load students", error);
+      toast.error(t('teacher.studentsLoadError', 'Ошибка загрузки списка учеников'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem('rv2class_token');
-    if (!token || !user) {
-      router.push('/');
+    fetchStudents();
+  }, [t]);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(t('teacher.deleteStudentConfirm', `Вы уверены, что хотите удалить ученика ${name}?`))) {
       return;
     }
-
-    // Connect to WebSocket server
-    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', {
-      auth: { token },
-      transports: ['websocket'],
-    });
-
-    socketInstance.on('connect', () => {
-      setIsConnected(true);
-      // Logic maps perfectly to your backend server/src/socket/index.ts
-      if (user.role === 'TEACHER') {
-        socketInstance.emit('create_room', { sessionId });
-      } else {
-        socketInstance.emit('join_room', { sessionId });
-      }
-    });
-
-    socketInstance.on('slide_changed', (data: { slideIndex: number }) => {
-      setCurrentSlideIndex(data.slideIndex);
-    });
-
-    socketInstance.on('sync_state', (data: { currentSlide: number }) => {
-      setCurrentSlideIndex(data.currentSlide);
-    });
-
-    setSocket(socketInstance);
-
-    return () => {
-      socketInstance.emit('leave_room');
-      socketInstance.disconnect();
-    };
-  }, [sessionId, user, router]);
-
-  const nextSlide = () => {
-    if (socket && user?.role === 'TEACHER') {
-      socket.emit('change_slide', { slideIndex: currentSlideIndex + 1 });
+    
+    try {
+      await api.delete(`/teacher/students/${id}`);
+      toast.success(t('teacher.studentDeleted', 'Ученик удален'));
+      setStudents(students.filter(s => s.id !== id));
+    } catch (err: any) {
+      console.error(err);
+      toast.error(t('teacher.studentDeleteError', 'Ошибка при удалении ученика'));
     }
   };
 
-  const prevSlide = () => {
-    if (socket && user?.role === 'TEACHER' && currentSlideIndex > 0) {
-      socket.emit('change_slide', { slideIndex: currentSlideIndex - 1 });
-    }
-  };
+  const filtered = students.filter(s => 
+    s.name.toLowerCase().includes(search.toLowerCase()) || 
+    s.email.toLowerCase().includes(search.toLowerCase())
+  );
 
-  if (!isConnected) {
+  if (loading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-background">
-        <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground font-medium">Подключение к классу...</p>
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
-      {/* Top Navbar */}
-      <header className="h-14 border-b border-secondary flex items-center justify-between px-6 bg-card shrink-0 shadow-sm z-10">
-        <div className="flex items-center gap-4">
-          <h1 className="font-bold text-primary text-xl tracking-tight">rv2class</h1>
-          <span className="text-sm font-medium text-muted-foreground bg-secondary/50 px-3 py-1 rounded-md border border-border">
-            Слайд {currentSlideIndex + 1}
-          </span>
+    <div className="max-w-7xl mx-auto pb-20 px-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between md:items-end gap-8 mb-12 border-b border-border pb-8">
+        <div>
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground">{t('navigation.students', 'Ученики')}</h1>
+          <p className="text-muted-foreground mt-2 text-lg">{t('teacher.studentsDesc', 'Управляйте своими учениками и следите за их прогрессом.')}</p>
         </div>
-        <Button variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => router.push(user?.role === 'TEACHER' ? '/teacher' : '/student')}>
-          <LogOut className="w-4 h-4 mr-2" /> Завершить урок
-        </Button>
-      </header>
-
-      {/* Main Workspace */}
-      <div className="flex flex-1 overflow-hidden">
-        
-        {/* Slide Area (16:9 constraint for Off2Class feel) */}
-        <main className="flex-1 bg-secondary/20 flex items-center justify-center p-6 relative">
-          <div className="w-full max-w-[1280px] aspect-video bg-white shadow-2xl rounded-xl border border-border relative overflow-hidden flex items-center justify-center">
-            <p className="text-muted-foreground text-2xl font-medium">Место для слайда {currentSlideIndex + 1}</p>
-            {/* TODO: In the next step, we will layer the <img src={slide.url}> and <canvas id="fabric-canvas"> here */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              placeholder={t('teacher.searchStudent', 'Search students...')} 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              className="pl-11 h-12 rounded-xl bg-card border-border/50 focus:ring-2 focus:ring-primary/20 transition-all" 
+            />
           </div>
-
-          {/* Teacher Floating Toolbar */}
-          {user?.role === 'TEACHER' && (
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-card border border-border shadow-xl rounded-full px-4 py-2 flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={prevSlide} disabled={currentSlideIndex === 0}><ChevronLeft className="w-6 h-6 text-foreground" /></Button>
-              <div className="w-px h-6 bg-border mx-2"></div>
-              <Button variant="ghost" size="icon" className="hover:bg-primary/10 text-primary"><PenTool className="w-5 h-5" /></Button>
-              <Button variant="ghost" size="icon" className="hover:bg-destructive/10 text-destructive"><Eraser className="w-5 h-5" /></Button>
-              <div className="w-px h-6 bg-border mx-2"></div>
-              <Button variant="ghost" size="icon" onClick={nextSlide}><ChevronRight className="w-6 h-6 text-foreground" /></Button>
-            </div>
-          )}
-        </main>
-
-        {/* Teacher Notes Sidebar (Hidden from students) */}
-        {user?.role === 'TEACHER' && (
-          <aside className="w-80 bg-card border-l border-secondary shrink-0 flex flex-col shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)]">
-            <div className="p-5 border-b border-secondary bg-background/50">
-              <h2 className="font-semibold text-foreground text-lg">Заметки для учителя</h2>
-            </div>
-            <div className="flex-1 p-5 overflow-y-auto space-y-6">
-              <div className="p-4 bg-secondary/40 rounded-xl border border-border">
-                <p className="font-semibold text-primary mb-2">Вопросы для обсуждения:</p>
-                <ul className="list-disc pl-4 text-sm text-muted-foreground space-y-2">
-                  <li>What did you do last weekend?</li>
-                  <li>Have you ever traveled abroad?</li>
-                </ul>
-              </div>
-              <div className="p-4 bg-accent/5 rounded-xl border border-accent/20">
-                <p className="font-semibold text-accent mb-2">Правильные ответы:</p>
-                <ol className="list-decimal pl-4 text-sm text-foreground space-y-2">
-                  <li>went</li>
-                  <li>have seen</li>
-                </ol>
-              </div>
-            </div>
-          </aside>
-        )}
+          <CreateStudentDialog onStudentCreated={fetchStudents} />
+        </div>
       </div>
+
+      {/* Gallery Grid */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-24 bg-card/50 rounded-[2rem] border-2 border-dashed border-border flex flex-col items-center">
+          <div className="w-16 h-16 bg-secondary/20 rounded-2xl flex items-center justify-center mb-6 text-2xl">👤</div>
+          <p className="text-muted-foreground text-lg italic">
+            {search ? t('teacher.noStudentsFound', 'Ученики не найдены') : t('teacher.emptyStudentsList', 'Ваш список учеников пуст.')}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filtered.map((s) => {
+            const initials = s.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            
+            return (
+              <div 
+                key={s.id} 
+                className="group relative bg-card border border-border/50 rounded-[2rem] p-6 transition-all duration-300 hover:shadow-2xl hover:border-primary/30 hover:translate-y-[-4px]"
+              >
+                {/* Actions Menu */}
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={(e) => { e.stopPropagation(); handleDelete(s.id, s.name); }} 
+                    className="w-8 h-8 rounded-full text-destructive hover:bg-destructive/10 cursor-pointer"
+                   >
+                    <Trash2 className="w-4 h-4" />
+                   </Button>
+                </div>
+
+                <div className="flex flex-col items-center text-center">
+                  <div 
+                    onClick={() => router.push(`/teacher/students/${s.id}`)}
+                    className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-4 border-2 border-primary/5 group-hover:border-primary/20 transition-all cursor-pointer shadow-inner"
+                  >
+                    <span className="text-2xl font-black text-primary">{initials}</span>
+                  </div>
+                  
+                  <h3 
+                    onClick={() => router.push(`/teacher/students/${s.id}`)}
+                    className="font-bold text-lg text-foreground mb-1 group-hover:text-primary transition-colors cursor-pointer line-clamp-1 px-4"
+                  >
+                    {s.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-6 font-medium">{s.email}</p>
+                  
+                  <div className="w-full flex items-center justify-center gap-3 pt-4 border-t border-border/50">
+                     <div className="flex flex-col items-center px-4">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">HW</span>
+                        <span className="text-sm font-black text-primary bg-primary/5 px-2 py-0.5 rounded-full">{s._count.homeworkAssignments}</span>
+                     </div>
+                     <div className="w-[1px] h-6 bg-border/50" />
+                     <div className="flex flex-col items-center px-4">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 opacity-60">JOINED</span>
+                        <span className="text-[10px] font-bold text-foreground bg-secondary/50 px-2 py-0.5 rounded-full">
+                           {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                        </span>
+                     </div>
+                  </div>
+
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => router.push(`/teacher/students/${s.id}`)}
+                    className="w-full mt-6 rounded-xl font-bold bg-secondary/80 hover:bg-primary hover:text-white transition-all cursor-pointer"
+                  >
+                    {t('teacher.viewProfile', 'View Profile')}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -19,26 +19,31 @@ export interface GradingResult {
  */
 export async function gradeHomeworkSubmission(
   assignmentId: string,
-  answers: SubmittedAnswer[]
+  answers: SubmittedAnswer[],
+  videoAnswer?: string
 ): Promise<GradingResult> {
-  let correctCount = 0;
-  const totalQuestions = answers.length;
+  const assignment = await prisma.homeworkAssignment.findUnique({
+    where: { id: assignmentId },
+    include: { lesson: true }
+  });
 
+  if (!assignment) throw new Error('Assignment not found');
+
+  let correctCount = 0;
+  let totalQuestions = answers.length;
+
+  // Grade standard questions
   for (const answer of answers) {
-    // Get the correct answer from the database
     const homework = await prisma.homework.findUnique({
       where: { id: answer.homeworkId },
     });
 
     if (!homework) continue;
 
-    // Normalize both strings for comparison
     const studentAnswer = normalizeAnswer(answer.answer);
     const correctAnswer = normalizeAnswer(homework.correctAnswer || '');
-
     const isCorrect = compareAnswers(studentAnswer, correctAnswer, homework.exerciseType);
 
-    // Save response
     await prisma.homeworkResponse.create({
       data: {
         assignmentId,
@@ -51,15 +56,28 @@ export async function gradeHomeworkSubmission(
     if (isCorrect) correctCount++;
   }
 
+  // Grade Video Task if present
+  let isVideoCorrect = null;
+  const lesson = assignment.lesson as any;
+  if (lesson.homeworkVideoUrl && videoAnswer) {
+    totalQuestions += 1; // Count video task as a question
+    const studentVideoAnswer = normalizeAnswer(videoAnswer);
+    const correctVideoAnswer = normalizeAnswer(lesson.homeworkVideoAnswer || '');
+    isVideoCorrect = studentVideoAnswer === correctVideoAnswer;
+    if (isVideoCorrect) correctCount++;
+  }
+
   const score = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
 
-  // Update assignment with score and submission time
+  // Update assignment
   await prisma.homeworkAssignment.update({
     where: { id: assignmentId },
     data: {
       submittedAt: new Date(),
       score,
-    },
+      videoAnswer: videoAnswer || null,
+      isVideoCorrect,
+    } as any,
   });
 
   return { score, totalQuestions, correctCount };

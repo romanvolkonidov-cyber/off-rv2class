@@ -23,6 +23,7 @@ interface Course {
     title: string;
     published: boolean;
     aiStatus: string;
+    aiError: string | null;
     orderIndex: number;
   }[];
   orderIndex: number;
@@ -37,9 +38,17 @@ export default function AdminDashboard() {
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [uploadingLessonId, setUploadingLessonId] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isCreatingCourse, setIsCreatingCourse] = useState(false);
   const [newCourseOrder, setNewCourseOrder] = useState(0);
   const [newLessonOrder, setNewLessonOrder] = useState(0);
+  const [newLessonLevel, setNewLessonLevel] = useState('B1');
+
+  // Edit states
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editingLesson, setEditingLesson] = useState<{ id: string; title: string, level: string, orderIndex: number } | null>(null);
+  const [isEditingCourseDialog, setIsEditingCourseDialog] = useState(false);
+  const [isEditingLessonDialog, setIsEditingLessonDialog] = useState(false);
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -89,10 +98,12 @@ export default function AdminDashboard() {
     try {
       await api.post(`/admin/courses/${courseId}/lessons`, {
         title: newLessonTitle,
+        level: newLessonLevel,
         orderIndex: Number(newLessonOrder),
       });
       setNewLessonTitle('');
       setNewLessonOrder(0);
+      setNewLessonLevel('B1');
       setSelectedCourseId(null);
       fetchCourses();
       toast.success(t('admin.lessonCreated', 'Урок создан'));
@@ -101,15 +112,69 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUploadSlides = async (lessonId: string, files: FileList) => {
+  const handleUpdateCourse = async () => {
+    if (!editingCourse || !editingCourse.title.trim()) return;
+    try {
+      await api.put(`/admin/courses/${editingCourse.id}`, {
+        title: editingCourse.title,
+        description: editingCourse.description,
+        color: editingCourse.color,
+        orderIndex: Number(editingCourse.orderIndex),
+      });
+      setIsEditingCourseDialog(false);
+      setEditingCourse(null);
+      fetchCourses();
+      toast.success(t('common.saved', 'Сохранено'));
+    } catch {
+      toast.error(t('common.error', 'Ошибка'));
+    }
+  };
+
+  const handleUpdateLesson = async () => {
+    if (!editingLesson || !editingLesson.title.trim()) return;
+    try {
+      await api.put(`/admin/lessons/${editingLesson.id}`, {
+        title: editingLesson.title,
+        level: editingLesson.level,
+        orderIndex: Number(editingLesson.orderIndex),
+      });
+      setIsEditingLessonDialog(false);
+      setEditingLesson(null);
+      fetchCourses();
+      toast.success(t('common.saved', 'Сохранено'));
+    } catch {
+      toast.error(t('common.error', 'Ошибка'));
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: string) => {
+    if (!confirm(t('admin.deleteLessonConfirm', 'Удалить этот урок?'))) return;
+    try {
+      await api.delete(`/admin/lessons/${lessonId}`);
+      fetchCourses();
+      toast.success(t('common.deleted', 'Удалено'));
+    } catch {
+      toast.error(t('admin.deleteError', 'Ошибка удаления'));
+    }
+  };
+
+  const handleUploadSlides = async (lessonId: string, files: FileList, level: string) => {
     setUploadingLessonId(lessonId);
+    setUploadProgress(0);
     const formData = new FormData();
     Array.from(files).forEach((file) => formData.append('slides', file));
+    formData.append('level', level);
 
     try {
       await api.post(`/admin/lessons/${lessonId}/slides`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120000,
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        }
       });
       toast.success(t('admin.slidesUploaded', 'Слайды загружены. ИИ генерирует материалы...'));
       fetchCourses();
@@ -117,6 +182,7 @@ export default function AdminDashboard() {
       toast.error(t('admin.slidesUploadError', 'Ошибка загрузки слайдов'));
     } finally {
       setUploadingLessonId(null);
+      setUploadProgress(0);
     }
   };
 
@@ -145,8 +211,10 @@ export default function AdminDashboard() {
 
   const fileInputRef = useState<HTMLInputElement | null>(null);
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
+  const [currentLessonLevel, setCurrentLessonLevel] = useState<string>('B1');
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (lesson: any) => {
+    const status = lesson.aiStatus;
     const variants: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
       pending: { label: t('admin.statusPending', 'Ожидает'), variant: 'outline' },
       processing: { label: t('admin.statusProcessing', 'ИИ обрабатывает...'), variant: 'secondary' },
@@ -154,12 +222,24 @@ export default function AdminDashboard() {
       failed: { label: t('admin.statusFailed', 'Ошибка'), variant: 'destructive' },
     };
     const cfg = variants[status] || variants.pending;
-    return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant={cfg.variant} title={status === 'failed' ? lesson.aiError : undefined}>
+          {cfg.label}
+        </Badge>
+        {status === 'failed' && lesson.aiError && (
+          <span className="text-[10px] text-destructive max-w-[150px] truncate" title={lesson.aiError}>
+            {lesson.aiError}
+          </span>
+        )}
+      </div>
+    );
   };
 
-  const triggerFileUpload = (lessonId: string) => {
+  const triggerFileUpload = (lessonId: string, level: string) => {
     console.log('🔘 Upload button clicked for lesson:', lessonId);
     setCurrentLessonId(lessonId);
+    setCurrentLessonLevel(level || 'B1');
     const input = document.getElementById('global-slide-upload') as HTMLInputElement;
     if (input) {
       input.click();
@@ -178,7 +258,7 @@ export default function AdminDashboard() {
         onChange={(e) => {
           if (e.target.files && currentLessonId) {
             console.log('📁 Files selected:', e.target.files.length);
-            handleUploadSlides(currentLessonId, e.target.files);
+            handleUploadSlides(currentLessonId, e.target.files, currentLessonLevel);
             // Reset input so the same file can be picked again if needed
             e.target.value = '';
           }
@@ -224,11 +304,21 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-2">
                 <Label>{t('admin.courseColor', 'Цвет карточки курса')}</Label>
-                <div className="flex gap-2">
-                  {['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'].map(c => (
-                    <button key={c} type="button" onClick={() => setNewCourseColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${newCourseColor === c ? 'border-foreground scale-110' : 'border-transparent'}`} style={{ backgroundColor: c }} />
-                  ))}
-                </div>
+                 <div className="flex items-center gap-3">
+                   {['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'].map(c => (
+                     <button key={c} type="button" onClick={() => setNewCourseColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${newCourseColor === c ? 'border-foreground scale-110 shadow-sm' : 'border-transparent opacity-70 hover:opacity-100'}`} style={{ backgroundColor: c }} title={c} />
+                   ))}
+                   <div className="h-8 w-[1px] bg-border mx-1" />
+                   <div className="relative flex items-center gap-2 bg-secondary/50 px-2 py-1 rounded-lg border border-border">
+                     <span className="text-[10px] font-mono text-muted-foreground">{newCourseColor.toUpperCase()}</span>
+                     <input 
+                       type="color" 
+                       value={newCourseColor} 
+                       onChange={(e) => setNewCourseColor(e.target.value)}
+                       className="w-6 h-6 rounded border-none cursor-pointer bg-transparent"
+                     />
+                   </div>
+                 </div>
               </div>
               <div className="space-y-2">
                 <Label>{t('admin.courseOrder', 'Порядок (например: 1, 2, 3...)')}</Label>
@@ -302,6 +392,18 @@ export default function AdminDashboard() {
                             placeholder="1"
                           />
                         </div>
+                        <div className="space-y-2">
+                          <Label>{t('teacher.level', 'Уровень (CEFR)')}</Label>
+                          <select
+                            className="w-full border border-border rounded-lg p-2 bg-card text-foreground"
+                            value={newLessonLevel}
+                            onChange={(e) => setNewLessonLevel(e.target.value)}
+                          >
+                            {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(lvl => (
+                              <option key={lvl} value={lvl}>{lvl}</option>
+                            ))}
+                          </select>
+                        </div>
                         <Button
                           onClick={() => handleCreateLesson(course.id)}
                           className="w-full cursor-pointer"
@@ -311,6 +413,53 @@ export default function AdminDashboard() {
                       </div>
                     </DialogContent>
                   </Dialog>
+                        >
+                          {t('common.create')}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Edit Course Dialog */}
+                  <Dialog open={isEditingCourseDialog} onOpenChange={setIsEditingCourseDialog}>
+                    <DialogTrigger render={
+                      <Button variant="ghost" size="sm" onClick={() => setEditingCourse(course)} className="cursor-pointer">
+                        ✏️
+                      </Button>
+                    } />
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>{t('admin.editCourse', 'Редактировать курс')}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 pt-2">
+                        <div className="space-y-2">
+                          <Label>{t('admin.courseName')}</Label>
+                          <Input
+                            value={editingCourse?.title || ''}
+                            onChange={(e) => setEditingCourse(prev => prev ? { ...prev, title: e.target.value } : null)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t('admin.courseDescription')}</Label>
+                          <Input
+                            value={editingCourse?.description || ''}
+                            onChange={(e) => setEditingCourse(prev => prev ? { ...prev, description: e.target.value } : null)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t('admin.courseColor')}</Label>
+                          <div className="flex items-center gap-3">
+                            {['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'].map(c => (
+                              <button key={c} type="button" onClick={() => setEditingCourse(prev => prev ? { ...prev, color: c } : null)} className={`w-8 h-8 rounded-full border-2 transition-all ${editingCourse?.color === c ? 'border-foreground scale-110 shadow-sm' : 'border-transparent opacity-70 hover:opacity-100'}`} style={{ backgroundColor: c }} />
+                            ))}
+                            <input type="color" value={editingCourse?.color || '#3b82f6'} onChange={(e) => setEditingCourse(prev => prev ? { ...prev, color: e.target.value } : null)} className="w-6 h-6 rounded cursor-pointer" />
+                          </div>
+                        </div>
+                        <Button onClick={handleUpdateCourse} className="w-full cursor-pointer">{t('common.save')}</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -338,11 +487,14 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3">
                           <span className="text-lg">📄</span>
                           <div>
-                            <p className="font-medium text-sm">{lesson.title}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {getStatusBadge(lesson.aiStatus)}
-                              {lesson.published && (
-                                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                             <p className="font-medium text-sm">{lesson.title}</p>
+                             <div className="flex items-center gap-2 mt-0.5">
+                               {getStatusBadge(lesson)}
+                               <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
+                                 {lesson.level || 'B1'}
+                               </span>
+                               {lesson.published && (
+                                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 px-1.5 py-0">
                                   {t('admin.published', 'Опубликован')}
                                 </Badge>
                               )}
@@ -351,18 +503,35 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setEditingLesson({ id: lesson.id, title: lesson.title, level: lesson.level || 'B1', orderIndex: lesson.orderIndex });
+                            setIsEditingLessonDialog(true);
+                          }} className="cursor-pointer">✏️</Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteLesson(lesson.id)} className="text-destructive cursor-pointer">🗑️</Button>
+                          <div className="w-[1px] h-4 bg-border mx-1" />
                           {/* Upload slides */}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={uploadingLessonId === lesson.id}
-                            onClick={() => triggerFileUpload(lesson.id)}
-                            className="cursor-pointer"
-                          >
-                            <span>
-                              {uploadingLessonId === lesson.id ? t('admin.uploading', '⏳ Загрузка...') : `📤 ${t('admin.uploadSlides')}`}
-                            </span>
-                          </Button>
+                          <div className="flex flex-col gap-1 items-end">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              disabled={uploadingLessonId === lesson.id}
+                              onClick={() => triggerFileUpload(lesson.id, lesson.level)}
+                              className="cursor-pointer min-w-[140px]"
+                            >
+                              <span>
+                                {uploadingLessonId === lesson.id 
+                                  ? uploadProgress < 100 
+                                      ? `📤 ${uploadProgress}%...` 
+                                      : t('admin.uploading', '⏳ ИИ...') 
+                                  : `📤 ${t('admin.uploadSlides')}`}
+                              </span>
+                            </Button>
+                            {uploadingLessonId === lesson.id && uploadProgress < 100 && (
+                              <div className="w-full h-1 bg-secondary rounded-full overflow-hidden mt-1 max-w-[140px]">
+                                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                              </div>
+                            )}
+                          </div>
 
                           <Button
                             variant="secondary"
@@ -394,6 +563,36 @@ export default function AdminDashboard() {
           ))}
         </div>
       )}
+      {/* Edit Lesson Dialog */}
+      <Dialog open={isEditingLessonDialog} onOpenChange={setIsEditingLessonDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('admin.editLesson', 'Редактировать урок')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>{t('admin.lessonName')}</Label>
+              <Input
+                value={editingLesson?.title || ''}
+                onChange={(e) => setEditingLesson(prev => prev ? { ...prev, title: e.target.value } : null)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('teacher.level', 'Уровень (CEFR)')}</Label>
+              <select
+                className="w-full border border-border rounded-lg p-2 bg-card text-foreground"
+                value={editingLesson?.level || 'B1'}
+                onChange={(e) => setEditingLesson(prev => prev ? { ...prev, level: e.target.value } : null)}
+              >
+                {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(lvl => (
+                  <option key={lvl} value={lvl}>{lvl}</option>
+                ))}
+              </select>
+            </div>
+            <Button onClick={handleUpdateLesson} className="w-full cursor-pointer">{t('common.save')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
