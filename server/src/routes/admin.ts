@@ -92,14 +92,14 @@ adminRouter.get('/courses', async (_req, res: Response): Promise<void> => {
 // POST /api/admin/courses
 adminRouter.post('/courses', async (req, res: Response): Promise<void> => {
   try {
-    const { title, description } = req.body;
+    const { title, description, color } = req.body;
     if (!title) {
       res.status(400).json({ error: 'Название курса обязательно' });
       return;
     }
 
     const course = await prisma.course.create({
-      data: { title, description },
+      data: { title, description, color } as any,
     });
     res.status(201).json(course);
   } catch (error) {
@@ -111,10 +111,10 @@ adminRouter.post('/courses', async (req, res: Response): Promise<void> => {
 // PUT /api/admin/courses/:id
 adminRouter.put('/courses/:id', async (req, res: Response): Promise<void> => {
   try {
-    const { title, description, orderIndex } = req.body;
+    const { title, description, orderIndex, color } = req.body;
     const course = await prisma.course.update({
       where: { id: req.params.id as string },
-      data: { title, description, orderIndex },
+      data: { title, description, orderIndex, color } as any,
     });
     res.json(course);
   } catch (error) {
