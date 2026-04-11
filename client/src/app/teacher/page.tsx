@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, FileText, Loader2 } from 'lucide-react';
+import { Play, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -35,7 +35,7 @@ export default function LibraryPage() {
         setCourses(res.data);
       } catch (error) {
         console.error("Failed to load library", error);
-        toast.error("Ошибка загрузки библиотеки уроков");
+        toast.error(t('teacher.libraryLoadError', 'Ошибка загрузки библиотеки уроков'));
       } finally {
         setLoading(false);
       }
@@ -70,7 +70,7 @@ export default function LibraryPage() {
                   <p>{t('teacher.assignments')}: {lesson._count.homework}</p>
                 </CardContent>
                 <CardFooter className="flex gap-2">
-                  <Button className="flex-1 bg-primary hover:bg-primary/90 text-white" onClick={() => router.push(`/classroom/${lesson.id}`)}>
+                  <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all" onClick={() => router.push(`/classroom/${lesson.id}`)}>
                     <Play className="w-4 h-4 mr-2" /> {t('teacher.start')}
                   </Button>
                 </CardFooter>

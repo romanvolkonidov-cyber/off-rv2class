@@ -4,11 +4,11 @@ import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import '@/lib/i18n';
+import Image from 'next/image';
 import api, { PROD_URL } from '@/lib/api';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
 import { useAuthStore } from '@/stores/auth';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -68,6 +68,36 @@ function ClassroomContent() {
 
   // Flag to distinct programmatic seek/play from real user interactions
   const isRemoteAction = useRef(false);
+
+  const saveCanvasState = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvasStatesRef.current[currentSlide] = canvas.toDataURL();
+  }, [currentSlide]);
+
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }, []);
+
+  const drawRemotePath = useCallback((path: { fromX: number; fromY: number; toX: number; toY: number; color: string; width: number }) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.beginPath();
+    ctx.moveTo(path.fromX, path.fromY);
+    ctx.lineTo(path.toX, path.toY);
+    ctx.strokeStyle = path.color;
+    ctx.lineWidth = path.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  }, []);
 
   useEffect(() => {
     loadFromStorage();
@@ -149,7 +179,7 @@ function ClassroomContent() {
 
     socket.on('session:annotation_toggled', (data: { canAnnotate: boolean }) => {
       setCanAnnotate(data.canAnnotate);
-      toast.info(data.canAnnotate ? 'Учитель разрешил вам рисовать на доске' : 'Вы больше не можете рисовать на доске');
+      toast.info(data.canAnnotate ? t('classroom.annotationEnabled', 'Учитель разрешил вам рисовать на доске') : t('classroom.annotationDisabled', 'Вы больше не можете рисовать на доске'));
     });
 
     // Canvas events from remote
@@ -163,12 +193,12 @@ function ClassroomContent() {
     });
 
     socket.on('student_joined', () => {
-      toast.info('Ученик присоединился к уроку');
+      toast.info(t('classroom.studentJoined', 'Ученик присоединился к уроку'));
     });
 
     socket.on('user_left', (data: { role: string }) => {
       if (data.role === 'STUDENT') {
-        toast.info('Ученик покинул урок');
+        toast.info(t('classroom.studentLeft', 'Ученик покинул урок'));
       }
     });
 
@@ -223,7 +253,7 @@ function ClassroomContent() {
     return () => {
       disconnectSocket();
     };
-  }, [sessionId, user, role, currentSlide]);
+  }, [sessionId, user, role, currentSlide, clearCanvas, drawRemotePath]);
 
   // Canvas setup
   useEffect(() => {
@@ -243,43 +273,13 @@ function ClassroomContent() {
     // Restore canvas state for this slide
     const savedState = canvasStatesRef.current[currentSlide];
     if (savedState) {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0);
       };
       img.src = savedState;
     }
   }, [currentSlide, session]);
-
-  const saveCanvasState = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvasStatesRef.current[currentSlide] = canvas.toDataURL();
-  }, [currentSlide]);
-
-  const clearCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, []);
-
-  const drawRemotePath = useCallback((path: { fromX: number; fromY: number; toX: number; toY: number; color: string; width: number }) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.beginPath();
-    ctx.moveTo(path.fromX, path.fromY);
-    ctx.lineTo(path.toX, path.toY);
-    ctx.strokeStyle = path.color;
-    ctx.lineWidth = path.width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-  }, []);
 
   // Canvas mouse handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -436,10 +436,10 @@ function ClassroomContent() {
     if (!sessionId) return;
     try {
       await api.put(`/teacher/classroom/${sessionId}/end`);
-      toast.success('Урок завершен');
+      toast.success(t('classroom.classEnded', 'Урок завершен'));
       router.push(`/teacher?assignHw=${sessionId}`);
     } catch {
-      toast.error('Ошибка завершения урока');
+      toast.error(t('classroom.endError', 'Ошибка завершения урока'));
     }
   };
 
@@ -451,19 +451,19 @@ function ClassroomContent() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Top bar */}
-      <div className="h-14 border-b border-border flex items-center justify-between px-4 shrink-0 bg-card">
+      {/* Responsive Top bar */}
+      <div className="min-h-14 py-2 border-b border-border flex flex-wrap items-center justify-between px-2 md:px-4 gap-2 shrink-0 bg-card">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center">
             <span className="text-xs font-bold text-white">rv</span>
           </div>
-          <h1 className="text-sm font-semibold">{session?.lesson?.title || 'Загрузка...'}</h1>
-          <Badge variant={isConnected ? 'default' : 'destructive'} className="text-xs">
-            {isConnected ? '🟢 Подключено' : '🔴 Нет связи'}
+          <h1 className="text-sm font-semibold hidden md:block max-w-[200px] truncate">{session?.lesson?.title || t('classroom.loading', 'Загрузка...')}</h1>
+          <Badge variant={isConnected ? 'default' : 'destructive'} className="text-xs hidden sm:flex">
+            {isConnected ? `🟢 ${t('classroom.connected', 'Подключено')}` : `🔴 ${t('classroom.disconnected', 'Нет связи')}`}
           </Badge>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-1 sm:flex-none justify-end">
           {currentSlideData?.audioUrl && (
             <audio
               ref={audioRef}
@@ -476,13 +476,13 @@ function ClassroomContent() {
             />
           )}
 
-          <span className="text-sm text-muted-foreground mr-2">
-            {t('classroom.slide')} {currentSlide + 1} {t('classroom.of')} {slides.length}
+          <span className="text-sm text-muted-foreground hidden sm:block md:mr-2">
+            {t('classroom.slide', 'Слайд')} {currentSlide + 1} {t('classroom.of', 'из')} {slides.length}
           </span>
           {role === 'teacher' && (
             <>
-              <div className="flex items-center gap-2 mr-2">
-                <label className="text-xs font-semibold uppercase text-muted-foreground">Ученик пишет:</label>
+              <div className="flex items-center gap-2 md:mr-2">
+                <label className="text-xs font-semibold uppercase text-muted-foreground hidden lg:block">{t('classroom.studentDraws', 'Ученик пишет:')}</label>
                 <button 
                   onClick={handleToggleAnnotation}
                   className={`w-10 h-5 rounded-full relative transition-colors ${canAnnotate ? 'bg-green-500' : 'bg-muted'}`}
@@ -507,7 +507,7 @@ function ClassroomContent() {
             <div className="h-12 border-b border-border flex items-center gap-2 px-4 bg-card/50">
               {[
                 { tool: 'pen' as const, label: t('classroom.draw'), icon: '✏️' },
-                { tool: 'text' as const, label: 'Текст', icon: 'T' },
+                { tool: 'text' as const, label: t('classroom.text', 'Текст'), icon: 'T' },
                 { tool: 'eraser' as const, label: t('classroom.erase'), icon: '🧹' },
               ].map(({ tool, label, icon }) => (
               <Button
@@ -532,6 +532,7 @@ function ClassroomContent() {
                 }`}
                 style={{ backgroundColor: color }}
                 onClick={() => setPenColor(color)}
+                title={color}
               />
             ))}
 
@@ -544,17 +545,20 @@ function ClassroomContent() {
         )}
 
           {/* Slide + Canvas + Video wrapper */}
-          <div className="flex-1 relative bg-muted/30 flex items-center justify-center p-4 gap-4">
+          <div className="flex-1 relative bg-muted/30 flex flex-col lg:flex-row items-center justify-center p-2 lg:p-4 gap-4 overflow-hidden">
             
             {/* 1) Slide / Board Container */}
-            <div className={`relative ${currentSlideData?.videoUrl ? 'w-1/2' : 'w-full max-w-4xl'} h-full bg-white rounded-xl shadow-xl overflow-hidden`}>
+            <div className="relative w-full h-full flex-1 max-w-6xl bg-white rounded-xl shadow-xl overflow-hidden shrink-0 lg:shrink">
               
               {/* Slide image */}
               {currentSlideData && (
-                <img
+                <Image
                   src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${currentSlideData.imageUrl}`}
                   alt={`Slide ${currentSlide + 1}`}
-                  className="absolute inset-0 w-full h-full object-contain"
+                  fill
+                  priority
+                  unoptimized
+                  className="object-contain select-none"
                   draggable={false}
                 />
               )}
@@ -570,7 +574,7 @@ function ClassroomContent() {
                   }}
                   readOnly={role === 'student' && !canAnnotate}
                   autoFocus
-                  placeholder="Текст..."
+                  placeholder={t('classroom.textPlaceholder', 'Текст...')}
                   className="absolute bg-transparent outline-none border border-dashed border-primary/50 text-foreground text-2xl font-medium p-1 w-48 min-h-12 resize-y z-10"
                   style={{
                     left: `${obj.x}px`,
@@ -590,9 +594,9 @@ function ClassroomContent() {
               />
             </div>
             
-            {/* 2) Video Player Container (right half) */}
+            {/* 2) Video Player Container */}
             {currentSlideData?.videoUrl && (
-              <div className="w-1/2 h-full bg-black rounded-xl shadow-xl overflow-hidden flex items-center justify-center relative">
+              <div className="w-full lg:w-80 h-48 lg:h-full lg:max-h-full bg-black rounded-xl shadow-xl overflow-hidden flex items-center justify-center shrink-0 relative z-10">
                 <video
                   ref={videoRef}
                   src={`${(process.env.NODE_ENV === 'production' ? PROD_URL : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'))}${currentSlideData.videoUrl}`}
@@ -708,8 +712,8 @@ function ClassroomContent() {
                     <>
                       <Separator />
                       <div>
-                        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                          💡 Советы
+                        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+                          💡 {t('teacher.tips', 'Советы')}
                         </h3>
                         <p className="text-sm text-muted-foreground">{currentNote.tips}</p>
                       </div>
@@ -718,7 +722,7 @@ function ClassroomContent() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  Нет заметок для этого слайда
+                  {t('teacher.noNotes', 'Нет заметок для этого слайда')}
                 </p>
               )}
             </div>
