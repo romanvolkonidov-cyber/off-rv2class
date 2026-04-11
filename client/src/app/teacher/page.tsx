@@ -286,5 +286,3 @@ export default function TeacherLibraryPage() {
     </div>
   );
 }
-  );
-}

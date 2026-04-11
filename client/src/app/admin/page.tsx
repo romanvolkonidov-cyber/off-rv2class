@@ -413,12 +413,6 @@ export default function AdminDashboard() {
                       </div>
                     </DialogContent>
                   </Dialog>
-                        >
-                          {t('common.create')}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
 
                   {/* Edit Course Dialog */}
                   <Dialog open={isEditingCourseDialog} onOpenChange={setIsEditingCourseDialog}>
