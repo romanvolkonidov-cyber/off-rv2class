@@ -18,9 +18,22 @@ const resources = {
         demoAccounts: "Demo accounts:",
         privacy: "Privacy Policy",
         terms: "Terms of Service",
-        rights: "All rights reserved."
+        rights: "All rights reserved.",
+        logout: "Log Out"
       },
-      common: { loading: "Loading..." }
+      navigation: {
+        library: "Library",
+        students: "My Students",
+        gradebook: "Gradebook",
+        settings: "Settings"
+      },
+      teacher: {
+        selectLesson: "Select a lesson to start teaching.",
+        slides: "Slides",
+        assignments: "Assignments",
+        start: "Start"
+      },
+      common: { loading: "Loading...", cancel: "Cancel", save: "Save", delete: "Delete", create: "Create" }
     }
   },
   ru: {
@@ -38,9 +51,22 @@ const resources = {
         demoAccounts: "Демо-аккаунты:",
         privacy: "Политика конфиденциальности",
         terms: "Пользовательское соглашение",
-        rights: "Все права защищены."
+        rights: "Все права защищены.",
+        logout: "Выйти из системы"
       },
-      common: { loading: "Загрузка..." }
+      navigation: {
+        library: "Библиотека уроков",
+        students: "Мои ученики",
+        gradebook: "Журнал оценок",
+        settings: "Настройки"
+      },
+      teacher: {
+        selectLesson: "Выберите урок для начала занятия.",
+        slides: "Слайдов",
+        assignments: "Заданий",
+        start: "Начать"
+      },
+      common: { loading: "Загрузка...", cancel: "Отмена", save: "Сохранить", delete: "Удалить", create: "Создать" }
     }
   }
 };
