@@ -27,7 +27,7 @@ const navConfig: Record<string, NavItem[]> = {
   ],
   STUDENT: [
     { label: 'nav.dashboard', href: '/student', icon: '🏠' },
-    { label: 'Прошлые уроки', href: '/student/lessons', icon: '📜' },
+    { label: 'nav.pastLessons', href: '/student/lessons', icon: '📜' },
     { label: 'nav.homework', href: '/student/homework', icon: '📝' },
   ],
 };
@@ -100,7 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer bg-accent/50 text-accent-foreground border border-accent hover:bg-accent mb-4"
               >
                 <span className="text-lg">{pathname.startsWith('/admin') ? '👨‍🏫' : '🛡️'}</span>
-                {pathname.startsWith('/admin') ? 'Перейти в режим Учителя' : 'Панель Администратора'}
+                {pathname.startsWith('/admin') ? t('admin.switchToTeacher', 'Перейти в режим Учителя') : t('admin.adminPanel', 'Панель Администратора')}
               </button>
               <Separator className="mb-4" />
             </>
