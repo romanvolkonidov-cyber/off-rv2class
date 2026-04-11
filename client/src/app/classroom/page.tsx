@@ -179,6 +179,7 @@ function ClassroomContent() {
 
     socket.on('session:annotation_toggled', (data: { canAnnotate: boolean }) => {
       setCanAnnotate(data.canAnnotate);
+      toast.info(data.canAnnotate ? 'Учитель разрешил вам рисовать на доске' : 'Вы больше не можете рисовать на доске');
       toast.info(data.canAnnotate ? t('classroom.annotationEnabled', 'Учитель разрешил вам рисовать на доске') : t('classroom.annotationDisabled', 'Вы больше не можете рисовать на доске'));
     });
 
@@ -193,11 +194,13 @@ function ClassroomContent() {
     });
 
     socket.on('student_joined', () => {
+      toast.info('Ученик присоединился к уроку');
       toast.info(t('classroom.studentJoined', 'Ученик присоединился к уроку'));
     });
 
     socket.on('user_left', (data: { role: string }) => {
       if (data.role === 'STUDENT') {
+        toast.info('Ученик покинул урок');
         toast.info(t('classroom.studentLeft', 'Ученик покинул урок'));
       }
     });
@@ -436,9 +439,11 @@ function ClassroomContent() {
     if (!sessionId) return;
     try {
       await api.put(`/teacher/classroom/${sessionId}/end`);
+      toast.success('Урок завершен');
       toast.success(t('classroom.classEnded', 'Урок завершен'));
       router.push(`/teacher?assignHw=${sessionId}`);
     } catch {
+      toast.error('Ошибка завершения урока');
       toast.error(t('classroom.endError', 'Ошибка завершения урока'));
     }
   };

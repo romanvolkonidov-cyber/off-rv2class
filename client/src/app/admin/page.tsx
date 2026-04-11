@@ -17,6 +17,7 @@ interface Course {
   id: string;
   title: string;
   description: string | null;
+  color: string | null;
   lessons: {
     id: string;
     title: string;
@@ -32,6 +33,7 @@ export default function AdminDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [newCourseTitle, setNewCourseTitle] = useState('');
   const [newCourseDesc, setNewCourseDesc] = useState('');
+  const [newCourseColor, setNewCourseColor] = useState('#3b82f6');
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [uploadingLessonId, setUploadingLessonId] = useState<string | null>(null);
@@ -68,10 +70,12 @@ export default function AdminDashboard() {
         title: newCourseTitle,
         description: newCourseDesc || null,
         orderIndex: Number(newCourseOrder),
+        color: newCourseColor,
       });
       setNewCourseTitle('');
       setNewCourseDesc('');
       setNewCourseOrder(0);
+      setNewCourseColor('#3b82f6');
       setIsCreatingCourse(false);
       fetchCourses();
       toast.success('Курс создан');
@@ -219,6 +223,14 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Цвет карточки курса</Label>
+                <div className="flex gap-2">
+                  {['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'].map(c => (
+                    <button key={c} type="button" onClick={() => setNewCourseColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${newCourseColor === c ? 'border-foreground scale-110' : 'border-transparent'}`} style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label>Порядок (например: 1, 2, 3...)</Label>
                 <Input
                   type="number"
@@ -249,7 +261,7 @@ export default function AdminDashboard() {
         <div className="space-y-6">
           {courses.map((course) => (
             <Card key={course.id} className="overflow-hidden" id={`course-${course.id}`}>
-              <CardHeader className="flex flex-row items-center justify-between bg-accent/30">
+              <CardHeader className="flex flex-row items-center justify-between transition-colors" style={{ backgroundColor: course.color ? `${course.color}20` : 'hsl(var(--accent)/0.3)' }}>
                 <div>
                   <CardTitle className="text-lg">{course.title}</CardTitle>
                   {course.description && (
