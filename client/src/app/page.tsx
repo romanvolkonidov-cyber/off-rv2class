@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const { user, login, isLoading, error, loadFromStorage } = useAuthStore();
 
@@ -23,6 +23,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+
+  const toggleLanguage = () => {
+    const currentLang = i18n.language || 'ru';
+    i18n.changeLanguage(currentLang.startsWith('ru') ? 'en' : 'ru');
+  };
 
   useEffect(() => {
     loadFromStorage();
@@ -120,6 +125,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      {/* Language Switcher */}
+      <div className="absolute top-6 right-6 z-50">
+        <Button variant="outline" size="sm" className="glass bg-background/50 hover:bg-background/80" onClick={toggleLanguage}>
+          {i18n.language?.startsWith('ru') ? '🇬🇧 English' : '🇷🇺 Русский'}
+        </Button>
+      </div>
+
       {/* Animated background */}
       <div className="absolute inset-0 gradient-brand opacity-[0.03]" />
       <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl animate-pulse" />
@@ -135,7 +147,7 @@ export default function LoginPage() {
             <span className="text-gradient">{t('app.name')}</span>
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            {isRegisterMode ? 'Создайте портал учителя для своих учеников' : t('auth.loginSubtitle')}
+            {isRegisterMode ? t('auth.registerSubtitle') : t('auth.loginSubtitle')}
           </CardDescription>
         </CardHeader>
 
@@ -143,11 +155,11 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isRegisterMode && (
               <div className="space-y-2">
-                <Label htmlFor="name">Ваше имя</Label>
+                <Label htmlFor="name">{t('auth.name')}</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Иван Иванов"
+                  placeholder={t('auth.namePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -160,7 +172,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="teacher@rv2class.ru"
+                placeholder={t('auth.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -212,53 +224,18 @@ export default function LoginPage() {
                 onClick={() => setIsRegisterMode(!isRegisterMode)}
                 className="text-primary hover:underline"
               >
-                {isRegisterMode ? 'Уже есть аккаунт? Войти' : 'Регистрация для учителей'}
+                {isRegisterMode ? t('auth.alreadyHaveAccount') : t('auth.teacherRegistration')}
               </button>
             </div>
           </form>
-
-          {/* Demo credentials hint - NOW OUTSIDE FORM */}
-          <div className="mt-6 pt-4 border-t border-border/50">
-            <p className="text-xs text-muted-foreground text-center mb-2">Демо-аккаунты:</p>
-            <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground">
-              <button
-                type="button"
-                className="text-left px-2 py-1.5 rounded hover:bg-primary/10 transition-colors cursor-pointer border border-primary/20"
-                onClick={() => performLogin('romanvolkonidov@gmail.com', 'admin123')}
-              >
-                🛡️ Roman Admin: romanvolkonidov@gmail.com / admin123
-              </button>
-              <button
-                type="button"
-                className="text-left px-2 py-1.5 rounded hover:bg-accent transition-colors cursor-pointer"
-                onClick={() => performLogin('admin@rv2class.ru', 'admin123')}
-              >
-                👑 admin@rv2class.ru / admin123
-              </button>
-              <button
-                type="button"
-                className="text-left px-2 py-1.5 rounded hover:bg-accent transition-colors cursor-pointer"
-                onClick={() => performLogin('teacher@rv2class.ru', 'teacher123')}
-              >
-                📚 teacher@rv2class.ru / teacher123
-              </button>
-              <button
-                type="button"
-                className="text-left px-2 py-1.5 rounded hover:bg-accent transition-colors cursor-pointer"
-                onClick={() => performLogin('student@rv2class.ru', 'student123')}
-              >
-                🎒 student@rv2class.ru / student123
-              </button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
       {/* Legal Footer for Payment Gateways */}
       <div className="absolute bottom-6 w-full text-center flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs font-medium text-muted-foreground z-10 px-4">
-        <a href="/legal/privacy" className="hover:text-primary transition-colors underline underline-offset-2">Политика конфиденциальности</a>
-        <a href="/legal/terms" className="hover:text-primary transition-colors underline underline-offset-2">Пользовательское соглашение</a>
-        <span className="opacity-70">© {new Date().getFullYear()} rv2class. Все права защищены.</span>
+        <a href="/legal/privacy" className="hover:text-primary transition-colors underline underline-offset-2">{t('auth.privacy')}</a>
+        <a href="/legal/terms" className="hover:text-primary transition-colors underline underline-offset-2">{t('auth.terms')}</a>
+        <span className="opacity-70">© {new Date().getFullYear()} rv2class. {t('auth.rights')}</span>
       </div>
     </div>
   );
