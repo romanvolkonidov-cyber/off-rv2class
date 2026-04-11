@@ -52,7 +52,6 @@ export default function LibraryPage() {
     <div className="space-y-8 max-w-7xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-foreground">{t('navigation.library')}</h1>
-        <p className="text-muted-foreground mt-2">Выберите урок для начала занятия.</p>
         <p className="text-muted-foreground mt-2">{t('teacher.selectLesson')}</p>
       </div>
       
@@ -67,14 +66,11 @@ export default function LibraryPage() {
                   <CardTitle className="text-lg line-clamp-2 text-foreground">{lesson.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 text-sm text-muted-foreground space-y-1">
-                  <p>Слайдов: {lesson._count.slides}</p>
-                  <p>Заданий: {lesson._count.homework}</p>
                   <p>{t('teacher.slides')}: {lesson._count.slides}</p>
                   <p>{t('teacher.assignments')}: {lesson._count.homework}</p>
                 </CardContent>
                 <CardFooter className="flex gap-2">
                   <Button className="flex-1 bg-primary hover:bg-primary/90 text-white" onClick={() => router.push(`/classroom/${lesson.id}`)}>
-                    <Play className="w-4 h-4 mr-2" /> Начать
                     <Play className="w-4 h-4 mr-2" /> {t('teacher.start')}
                   </Button>
                 </CardFooter>
