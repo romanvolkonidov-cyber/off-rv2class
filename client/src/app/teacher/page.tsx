@@ -69,7 +69,7 @@ export default function LibraryPage() {
       });
       router.push(`/classroom?session=${res.data.id}&role=teacher`);
     } catch (err) {
-      toast.error('Ошибка запуска урока');
+      toast.error(t('teacher.startError', 'Ошибка запуска урока'));
     }
   };
 
@@ -140,18 +140,18 @@ export default function LibraryPage() {
                 value={selectedStudentId}
                 onChange={(e) => setSelectedStudentId(e.target.value)}
               >
-                <option value="">-- Только просмотр (без ученика) --</option>
+                <option value="">-- {t('teacher.viewOnly', 'Только просмотр (без ученика)')} --</option>
                 {students.map(s => (
                   <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">Если вы выберете ученика, он сможет подключиться к уроку из своего кабинета.</p>
+              <p className="text-xs text-muted-foreground">{t('teacher.inviteTip', 'Если вы выберете ученика, он сможет подключиться к уроку из своего кабинета.')}</p>
             </div>
             <Button
               className="w-full bg-primary text-primary-foreground cursor-pointer shadow-md py-6 text-lg"
               onClick={handleStartSession}
             >
-              🚀 Запустить класс
+              🚀 {t('teacher.launchClass', 'Запустить класс')}
             </Button>
           </div>
         </DialogContent>

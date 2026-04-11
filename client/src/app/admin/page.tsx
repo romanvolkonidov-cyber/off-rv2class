@@ -46,7 +46,7 @@ export default function AdminDashboard() {
       const res = await api.get('/admin/courses');
       setCourses(res.data);
     } catch {
-      toast.error('Ошибка загрузки курсов');
+      toast.error(t('admin.errorLoadCourses', 'Ошибка загрузки курсов'));
     }
   }, []);
 
@@ -78,9 +78,9 @@ export default function AdminDashboard() {
       setNewCourseColor('#3b82f6');
       setIsCreatingCourse(false);
       fetchCourses();
-      toast.success('Курс создан');
+      toast.success(t('admin.courseCreated', 'Курс создан'));
     } catch {
-      toast.error('Ошибка создания курса');
+      toast.error(t('admin.courseCreateError', 'Ошибка создания курса'));
     }
   };
 
@@ -95,9 +95,9 @@ export default function AdminDashboard() {
       setNewLessonOrder(0);
       setSelectedCourseId(null);
       fetchCourses();
-      toast.success('Урок создан');
+      toast.success(t('admin.lessonCreated', 'Урок создан'));
     } catch {
-      toast.error('Ошибка создания урока');
+      toast.error(t('admin.lessonCreateError', 'Ошибка создания урока'));
     }
   };
 
@@ -111,10 +111,10 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120000,
       });
-      toast.success('Слайды загружены. ИИ генерирует материалы...');
+      toast.success(t('admin.slidesUploaded', 'Слайды загружены. ИИ генерирует материалы...'));
       fetchCourses();
     } catch {
-      toast.error('Ошибка загрузки слайдов');
+      toast.error(t('admin.slidesUploadError', 'Ошибка загрузки слайдов'));
     } finally {
       setUploadingLessonId(null);
     }
@@ -126,20 +126,20 @@ export default function AdminDashboard() {
         published: !currentState,
       });
       fetchCourses();
-      toast.success(!currentState ? 'Урок опубликован' : 'Урок снят с публикации');
+      toast.success(!currentState ? t('admin.lessonPublished', 'Урок опубликован') : t('admin.lessonUnpublished', 'Урок снят с публикации'));
     } catch {
-      toast.error('Ошибка');
+      toast.error(t('common.error', 'Ошибка'));
     }
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    if (!confirm('Удалить курс и все его уроки?')) return;
+    if (!confirm(t('admin.deleteCourseConfirm', 'Удалить курс и все его уроки?'))) return;
     try {
       await api.delete(`/admin/courses/${courseId}`);
       fetchCourses();
-      toast.success('Курс удалён');
+      toast.success(t('admin.courseDeleted', 'Курс удалён'));
     } catch {
-      toast.error('Ошибка удаления');
+      toast.error(t('admin.deleteError', 'Ошибка удаления'));
     }
   };
 
@@ -148,10 +148,10 @@ export default function AdminDashboard() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      pending: { label: 'Ожидает', variant: 'outline' },
-      processing: { label: 'ИИ обрабатывает...', variant: 'secondary' },
-      completed: { label: 'Готов', variant: 'default' },
-      failed: { label: 'Ошибка', variant: 'destructive' },
+      pending: { label: t('admin.statusPending', 'Ожидает'), variant: 'outline' },
+      processing: { label: t('admin.statusProcessing', 'ИИ обрабатывает...'), variant: 'secondary' },
+      completed: { label: t('admin.statusCompleted', 'Готов'), variant: 'default' },
+      failed: { label: t('admin.statusFailed', 'Ошибка'), variant: 'destructive' },
     };
     const cfg = variants[status] || variants.pending;
     return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-2xl font-bold">{t('admin.title')}</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Управление курсами, уроками и учебными материалами
+            {t('admin.subtitle', 'Управление курсами, уроками и учебными материалами')}
           </p>
         </div>
 
@@ -209,7 +209,7 @@ export default function AdminDashboard() {
                 <Input
                   value={newCourseTitle}
                   onChange={(e) => setNewCourseTitle(e.target.value)}
-                  placeholder="Английский для начинающих"
+                  placeholder={t('admin.coursePlaceholder', 'Английский для начинающих')}
                   id="course-title-input"
                 />
               </div>
@@ -218,12 +218,12 @@ export default function AdminDashboard() {
                 <Input
                   value={newCourseDesc}
                   onChange={(e) => setNewCourseDesc(e.target.value)}
-                  placeholder="Описание курса..."
+                  placeholder={t('admin.descPlaceholder', 'Описание курса...')}
                   id="course-desc-input"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Цвет карточки курса</Label>
+                <Label>{t('admin.courseColor', 'Цвет карточки курса')}</Label>
                 <div className="flex gap-2">
                   {['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'].map(c => (
                     <button key={c} type="button" onClick={() => setNewCourseColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${newCourseColor === c ? 'border-foreground scale-110' : 'border-transparent'}`} style={{ backgroundColor: c }} />
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Порядок (например: 1, 2, 3...)</Label>
+                <Label>{t('admin.courseOrder', 'Порядок (например: 1, 2, 3...)')}</Label>
                 <Input
                   type="number"
                   value={newCourseOrder}
@@ -253,8 +253,8 @@ export default function AdminDashboard() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <span className="text-4xl mb-3">📚</span>
-            <p className="text-lg font-medium">Курсов пока нет</p>
-            <p className="text-sm">Создайте первый курс, чтобы начать</p>
+            <p className="text-lg font-medium">{t('admin.noCourses', 'Курсов пока нет')}</p>
+            <p className="text-sm">{t('admin.createFirstCourse', 'Создайте первый курс, чтобы начать')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -290,11 +290,11 @@ export default function AdminDashboard() {
                           <Input
                             value={newLessonTitle}
                             onChange={(e) => setNewLessonTitle(e.target.value)}
-                            placeholder="Present Simple — Введение"
+                            placeholder={t('admin.lessonPlaceholder', 'Present Simple — Введение')}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Порядок (например: 001, 002...)</Label>
+                          <Label>{t('admin.lessonOrder', 'Порядок (например: 001, 002...)')}</Label>
                           <Input
                             type="number"
                             value={newLessonOrder}
@@ -325,7 +325,7 @@ export default function AdminDashboard() {
               <CardContent className="p-0">
                 {course.lessons.length === 0 ? (
                   <div className="p-6 text-center text-muted-foreground text-sm">
-                    В этом курсе пока нет уроков
+                    {t('admin.noLessonsInCourse', 'В этом курсе пока нет уроков')}
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
@@ -343,7 +343,7 @@ export default function AdminDashboard() {
                               {getStatusBadge(lesson.aiStatus)}
                               {lesson.published && (
                                 <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
-                                  Опубликован
+                                  {t('admin.published', 'Опубликован')}
                                 </Badge>
                               )}
                             </div>
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
                             className="cursor-pointer"
                           >
                             <span>
-                              {uploadingLessonId === lesson.id ? '⏳ Загрузка...' : `📤 ${t('admin.uploadSlides')}`}
+                              {uploadingLessonId === lesson.id ? t('admin.uploading', '⏳ Загрузка...') : `📤 ${t('admin.uploadSlides')}`}
                             </span>
                           </Button>
 
@@ -371,7 +371,7 @@ export default function AdminDashboard() {
                             onClick={() => window.location.href = `/admin/lessons/${lesson.id}`}
                             disabled={lesson.aiStatus !== 'completed'}
                           >
-                            ✏️ Медиа и ДЗ
+                            ✏️ {t('admin.mediaAndHw', 'Медиа и ДЗ')}
                           </Button>
 
                           {/* Publish toggle */}
