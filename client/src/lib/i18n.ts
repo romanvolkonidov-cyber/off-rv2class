@@ -18,6 +18,9 @@ i18n
       loadPath: '/locales/{{lng}}/{{ns}}.json',
     },
     defaultNS: 'common',
+    react: {
+      useSuspense: false,
+    },
   });
 
 export default i18n;
